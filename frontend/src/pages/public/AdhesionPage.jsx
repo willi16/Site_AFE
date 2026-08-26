@@ -191,7 +191,7 @@ function AdhesionPage() {
           <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="max-w-3xl">
             <span className="text-accent-400 font-bold text-sm uppercase tracking-widest">Adhésion</span>
             <h1 className="text-4xl md:text-5xl font-bold text-white mt-3 mb-6 font-[var(--font-display)]">
-              Rejoignez l'Amicale des Fans de l'Est
+              Rejoignez l'Association de Fraternité et d'Entraide
             </h1>
             <p className="text-lg text-white/70">
               Devenez membre de l'AFE et bénéficiez d'un soutien solidaire au sein d'une communauté fraternelle.
@@ -257,7 +257,7 @@ function AdhesionPage() {
                 Conditions d'adhésion
               </h2>
               <p className="text-surface-500 mb-8">
-                Voici les conditions à remplir pour devenir membre de l'Amicale des Fans de l'Est, conformément à nos statuts.
+                Voici les conditions à remplir pour devenir membre de l'Association de Fraternité et d'Entraide, conformément à nos statuts.
               </p>
               <div className="space-y-3">
                 {adhesionConditions.map((condition, i) => (
