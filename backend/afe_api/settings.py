@@ -117,7 +117,7 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AFE API",
-    "DESCRIPTION": "API pour l'Association Fraternité et Entraide",
+    "DESCRIPTION": "API pour l'Association d'Entraide et de Fraternité",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

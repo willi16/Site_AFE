@@ -17,7 +17,7 @@ class IsAdminOrBureau(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role in ("bureau", "admin")
+            and request.user.member_profile.role in ("bureau", "admin", "secretary")
         )
 
 
@@ -27,9 +27,15 @@ class MemberViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated and hasattr(self.request.user, "member_profile"):
-            if self.request.user.member_profile.role in ("bureau", "admin"):
+            if self.request.user.member_profile.role in ("bureau", "admin", "secretary"):
                 return Member.objects.all()
         return Member.objects.filter(is_active_member=True, show_in_directory=True)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        member = Member.objects.get(user=request.user)
+        serializer = MemberSerializer(member)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def directory(self, request):

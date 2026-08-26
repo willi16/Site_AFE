@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
     setMember(null);
   };
 
-  const isBureau = member?.role === 'bureau' || member?.role === 'admin';
+  const isBureau = member?.role === 'bureau' || member?.role === 'admin' || member?.role === 'secretary';
   const isAuthenticated = !!user;
 
   return (

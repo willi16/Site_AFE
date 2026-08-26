@@ -64,7 +64,7 @@ function Navbar() {
             <img src="/logo-afe.jpg" alt="AFE Logo" className="h-10 w-10 rounded-xl object-cover group-hover:scale-105 transition-transform" />
             <div className="hidden sm:block">
               <span className="text-xl font-bold text-primary-500 font-[var(--font-display)]">AFE</span>
-              <span className="block text-[10px] text-surface-500 -mt-1 tracking-wider">FRATERNITÉ & ENTRAIDE</span>
+              <span className="block text-[10px] text-surface-500 -mt-1 tracking-wider">ENTRAIDE & FRATERNITÉ</span>
             </div>
           </Link>
 
