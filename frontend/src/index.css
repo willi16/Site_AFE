@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #fef2f0;
+  --color-primary-100: #fde0db;
+  --color-primary-200: #fbc0b7;
+  --color-primary-300: #f78c7e;
+  --color-primary-400: #f15a49;
+  --color-primary-500: #dd331a;
+  --color-primary-600: #c42d17;
+  --color-primary-700: #a32513;
+  --color-primary-800: #871f10;
+  --color-primary-900: #6b1a0d;
+
+  --color-accent-50: #edf6fc;
+  --color-accent-100: #d3eaf7;
+  --color-accent-200: #a8d5ef;
+  --color-accent-300: #6db9e3;
+  --color-accent-400: #3a9ad6;
+  --color-accent-500: #3486cb;
+  --color-accent-600: #2a6fa8;
+  --color-accent-700: #215886;
+  --color-accent-800: #1a4669;
+  --color-accent-900: #133450;
+
+  --color-warm-50: #fefce8;
+  --color-warm-100: #fef9c3;
+  --color-warm-200: #fef08a;
+  --color-warm-300: #fde047;
+  --color-warm-400: #facc15;
+  --color-warm-500: #eab308;
+
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-900: #0f172a;
+
+  --font-sans: 'Inter', 'system-ui', '-apple-system', 'sans-serif';
+  --font-display: 'Plus Jakarta Sans', 'Inter', 'sans-serif';
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold
+      transition-all duration-300 hover:bg-primary-600 hover:shadow-lg hover:-translate-y-0.5
+      active:translate-y-0 active:shadow-md;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl bg-accent-500 text-white font-semibold
+      transition-all duration-300 hover:bg-accent-600 hover:shadow-lg hover:-translate-y-0.5
+      active:translate-y-0 active:shadow-md;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl border-2 border-primary-500 text-primary-500 font-semibold
+      transition-all duration-300 hover:bg-primary-500 hover:text-white hover:shadow-lg;
+  }
+
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-8 py-16 md:py-24;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-surface-100 overflow-hidden
+      transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(221, 51, 26, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(221, 51, 26, 0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.6s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
