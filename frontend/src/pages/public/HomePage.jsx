@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Heart, Users, Calendar, Award, Shield, Handshake, BookOpen, Camera } from 'lucide-react';
+import { ArrowRight, Heart, Users, Calendar, Award, Shield, Handshake, BookOpen, Camera, Phone } from 'lucide-react';
 import SectionHeader from '../../components/ui/SectionHeader';
 import EventCard from '../../components/ui/EventCard';
 
@@ -85,8 +85,9 @@ function HomePage() {
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
               <div className="relative">
                 <div className="aspect-[4/3] bg-gradient-to-br from-primary-500 to-primary-700 rounded-3xl overflow-hidden">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Handshake className="w-24 h-24 text-white/20" />
+                  <img src="/logo-afe.jpg" alt="AFE" className="w-full h-full object-cover opacity-30" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Handshake className="w-24 h-24 text-white/40" />
                   </div>
                 </div>
                 <div className="absolute -bottom-6 -right-6 bg-accent-500 rounded-2xl p-6 shadow-xl">
@@ -168,6 +169,32 @@ function HomePage() {
                 <p className="text-sm text-surface-500 line-clamp-3">{news.excerpt}</p>
               </motion.div>
             ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Don */}
+      <section className="section-padding bg-surface-50">
+        <div className="container-custom">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="bg-gradient-to-br from-primary-500 to-primary-700 rounded-3xl p-10 md:p-16 text-center">
+            <Heart className="w-12 h-12 text-white/80 mx-auto mb-6" />
+            <h2 className="text-3xl font-bold text-white mb-4 font-[var(--font-display)]">Soutenez l'AFE</h2>
+            <p className="text-white/80 max-w-2xl mx-auto mb-6 leading-relaxed">
+              Votre générosité nous permet de poursuivre nos actions solidaires. Chaque don, quelle que soit sa taille, fait la différence pour notre communauté.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+              <div className="bg-white/20 rounded-xl px-6 py-3 text-white">
+                <p className="text-sm opacity-80">Président</p>
+                <p className="text-lg font-bold">91 08 90 82</p>
+              </div>
+              <div className="bg-white/20 rounded-xl px-6 py-3 text-white">
+                <p className="text-sm opacity-80">Secrétaire</p>
+                <p className="text-lg font-bold">92 07 59 13</p>
+              </div>
+            </div>
+            <Link to="/don" className="inline-flex items-center gap-2 bg-white text-primary-600 px-8 py-3.5 rounded-xl font-bold hover:bg-surface-50 transition-all">
+              En savoir plus <ArrowRight className="w-5 h-5" />
+            </Link>
           </motion.div>
         </div>
       </section>

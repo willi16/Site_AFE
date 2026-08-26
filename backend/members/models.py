@@ -7,6 +7,7 @@ class Member(models.Model):
         ("member", "Membre"),
         ("bureau", "Bureau"),
         ("secretary", "Secrétaire"),
+        ("treasurer", "Trésorier"),
         ("admin", "Admin"),
     ]
 
@@ -62,3 +63,29 @@ class BureauMember(models.Model):
 
     def __str__(self):
         return f"{self.member.full_name} - {self.get_position_display()}"
+
+
+class MembershipApplication(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "En attente"),
+        ("approved", "Approuvée"),
+        ("rejected", "Rejetée"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="applications")
+    demand_letter = models.FileField("Lettre de demande", upload_to="applications/letters/%Y/%m/", null=True, blank=True)
+    supporting_documents = models.FileField("Documents justificatifs", upload_to="applications/documents/%Y/%m/", null=True, blank=True)
+    motivation = models.TextField("Motivation", blank=True)
+    status = models.CharField("Statut", max_length=20, choices=STATUS_CHOICES, default="pending")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_applications")
+    review_note = models.TextField("Note du bureau", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Candidature d'adhésion"
+        verbose_name_plural = "Candidatures d'adhésion"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Candidature de {self.user.get_full_name()} - {self.get_status_display()}"

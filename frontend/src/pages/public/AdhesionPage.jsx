@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Users, Calendar, Award, HandHeart, CheckCircle, Shield,
   BookOpen, ArrowRight, ChevronDown, AlertTriangle, FileText,
-  CircleDollarSign, Clock, BadgeCheck, Gavel, Shirt,
+  CircleDollarSign, Clock, BadgeCheck, Gavel, Shirt, Upload, FileCheck,
 } from 'lucide-react';
 import api from '../../api/axios';
 
@@ -20,6 +20,7 @@ const registerSchema = z.object({
   email: z.string().email('Email invalide'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
   phone: z.string().optional(),
+  motivation: z.string().optional(),
   rgpd_consent: z.literal(true, { errorMap: () => ({ message: 'Vous devez accepter la politique de confidentialité' }) }),
 });
 
@@ -164,18 +165,44 @@ function AdhesionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [openAccordion, setOpenAccordion] = useState(0);
+  const [demandLetter, setDemandLetter] = useState(null);
+  const [supportingDocs, setSupportingDocs] = useState(null);
+  const [demandLetterName, setDemandLetterName] = useState('');
+  const [supportingDocsName, setSupportingDocsName] = useState('');
+  const demandLetterRef = useRef(null);
+  const supportingDocsRef = useRef(null);
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
       setError('');
-      await api.post('/members/register/', data);
+      const formData = new FormData();
+      formData.append('username', data.username);
+      formData.append('email', data.email);
+      formData.append('password', data.password);
+      formData.append('first_name', data.first_name);
+      formData.append('last_name', data.last_name);
+      formData.append('rgpd_consent', 'true');
+      if (data.phone) formData.append('phone', data.phone);
+      if (data.motivation) formData.append('motivation', data.motivation);
+      if (demandLetter) formData.append('demand_letter', demandLetter);
+      if (supportingDocs) formData.append('supporting_documents', supportingDocs);
+      await api.post('/members/apply/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setSubmitted(true);
     } catch (err) {
-      setError(err.response?.data?.detail || "Erreur lors de l'inscription. Veuillez réessayer.");
+      const detail = err.response?.data?.detail || err.response?.data?.username?.[0] || err.response?.data?.email?.[0] || "Erreur lors de l'inscription. Veuillez réessayer.";
+      setError(detail);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e, setter, nameSetter) => {
+    const file = e.target.files[0];
+    if (file) {
+      setter(file);
+      nameSetter(file.name);
     }
   };
 
@@ -454,6 +481,71 @@ function AdhesionPage() {
                       {...register('phone')}
                       className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
                     />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Motivation</label>
+                    <textarea
+                      {...register('motivation')}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm resize-none"
+                      placeholder="Décrivez votre motivation pour rejoindre l'AFE..."
+                    />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Lettre de demande</label>
+                      <input
+                        ref={demandLetterRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileChange(e, setDemandLetter, setDemandLetterName)}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => demandLetterRef.current?.click()}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-surface-300 hover:border-primary-400 hover:bg-primary-50/30 transition-all text-sm"
+                      >
+                        {demandLetterName ? (
+                          <>
+                            <FileCheck className="w-5 h-5 text-primary-500 shrink-0" />
+                            <span className="text-surface-700 truncate">{demandLetterName}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 text-surface-400 shrink-0" />
+                            <span className="text-surface-400">Choisir un fichier</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Documents justificatifs</label>
+                      <input
+                        ref={supportingDocsRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileChange(e, setSupportingDocs, setSupportingDocsName)}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => supportingDocsRef.current?.click()}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-surface-300 hover:border-primary-400 hover:bg-primary-50/30 transition-all text-sm"
+                      >
+                        {supportingDocsName ? (
+                          <>
+                            <FileCheck className="w-5 h-5 text-primary-500 shrink-0" />
+                            <span className="text-surface-700 truncate">{supportingDocsName}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 text-surface-400 shrink-0" />
+                            <span className="text-surface-400">Choisir un fichier</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div className="mb-6">
                     <label className="flex items-start gap-3 cursor-pointer">

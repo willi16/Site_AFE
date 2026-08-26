@@ -26,8 +26,8 @@ function LoginPage() {
     try {
       setLoading(true);
       setError('');
-      await login(data.username, data.password);
-      navigate('/espace-membre');
+      const result = await login(data.username, data.password);
+      navigate(result.dashboardPath);
     } catch (err) {
       setError("Identifiants incorrects. Veuillez réessayer.");
     } finally {

@@ -13,9 +13,11 @@ export function AuthProvider({ children }) {
       const { data } = await api.get('/members/me/');
       setMember(data);
       setUser(data.user);
+      return data;
     } catch {
       setUser(null);
       setMember(null);
+      return null;
     }
   }, []);
 
@@ -28,12 +30,19 @@ export function AuthProvider({ children }) {
     }
   }, [fetchProfile]);
 
+  const getDashboardPath = (memberData) => {
+    if (!memberData) return '/espace-membre';
+    if (memberData.role === 'treasurer') return '/espace-tresorier';
+    if (memberData.role === 'bureau' || memberData.role === 'admin' || memberData.role === 'secretary') return '/espace-bureau';
+    return '/espace-membre';
+  };
+
   const login = async (username, password) => {
     const { data } = await api.post('/auth/token/', { username, password });
     localStorage.setItem('access_token', data.access);
     localStorage.setItem('refresh_token', data.refresh);
-    await fetchProfile();
-    return data;
+    const memberData = await fetchProfile();
+    return { ...data, dashboardPath: getDashboardPath(memberData) };
   };
 
   const register = async (userData) => {
@@ -49,10 +58,11 @@ export function AuthProvider({ children }) {
   };
 
   const isBureau = member?.role === 'bureau' || member?.role === 'admin' || member?.role === 'secretary';
+  const isTreasurer = member?.role === 'treasurer';
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, member, loading, login, register, logout, isBureau, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, member, loading, login, register, logout, isBureau, isTreasurer, isAuthenticated, getDashboardPath }}>
       {children}
     </AuthContext.Provider>
   );

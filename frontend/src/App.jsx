@@ -9,23 +9,29 @@ import EventsPage from './pages/public/EventsPage';
 import ContactPage from './pages/public/ContactPage';
 import LoginPage from './pages/public/LoginPage';
 import AdhesionPage from './pages/public/AdhesionPage';
+import DonationPage from './pages/public/DonationPage';
 import GenericPage from './pages/public/GenericPage';
 import MemberDashboard from './pages/member/MemberDashboard';
 import BureauDashboard from './pages/bureau/BureauDashboard';
+import TreasurerDashboard from './pages/bureau/TreasurerDashboard';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
-function ProtectedRoute({ children, requireBureau = false }) {
-  const { isAuthenticated, isBureau, loading } = useAuth();
+function ProtectedRoute({ children, requireBureau = false, requireTreasurer = false }) {
+  const { isAuthenticated, isBureau, isTreasurer, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (requireBureau && !isBureau) return <Navigate to="/espace-membre" replace />;
+  if (requireTreasurer && !isTreasurer && !isBureau) return <Navigate to="/espace-membre" replace />;
+  if (requireBureau && !isBureau) {
+    if (isTreasurer) return <Navigate to="/espace-tresorier" replace />;
+    return <Navigate to="/espace-membre" replace />;
+  }
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, isBureau, loading } = useAuth();
+  const { isAuthenticated, isBureau, isTreasurer, member, loading, getDashboardPath } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
-  if (isAuthenticated) return <Navigate to={isBureau ? '/espace-bureau' : '/espace-membre'} replace />;
+  if (isAuthenticated) return <Navigate to={getDashboardPath(member)} replace />;
   return children;
 }
 
@@ -44,6 +50,7 @@ function AppContent() {
           <Route path="/evenements/archives" element={<GenericPage pageKey="archives" />} />
           <Route path="/actualites" element={<GenericPage pageKey="actualites" />} />
           <Route path="/adhesion" element={<AdhesionPage />} />
+          <Route path="/don" element={<DonationPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/espace-membre" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
@@ -57,6 +64,8 @@ function AppContent() {
           <Route path="/espace-bureau/comptabilite" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/fichiers" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/messages" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier/comptabilite" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -23,6 +23,7 @@ const footerLinks = {
     title: 'Nous Rejoindre',
     links: [
       { label: 'Adhésion', path: '/adhesion' },
+      { label: 'Faire un don', path: '/don' },
       { label: 'Contact', path: '/contact' },
       { label: 'Espace Membre', path: '/login' },
     ],

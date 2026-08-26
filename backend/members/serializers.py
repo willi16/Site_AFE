@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Member, BureauMember
+from .models import Member, BureauMember, MembershipApplication
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -83,3 +83,69 @@ class MemberRegisterSerializer(serializers.Serializer):
             rgpd_consent=validated_data["rgpd_consent"],
         )
         return user
+
+
+class MembershipApplicationSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.get_full_name", read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    reviewed_by_name = serializers.CharField(source="reviewed_by.get_full_name", read_only=True, default="")
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = MembershipApplication
+        fields = [
+            "id", "user", "user_name", "user_email",
+            "demand_letter", "supporting_documents", "motivation",
+            "status", "status_display", "reviewed_by", "reviewed_by_name",
+            "review_note", "created_at", "updated_at",
+        ]
+        read_only_fields = ["user", "status", "reviewed_by", "created_at", "updated_at"]
+
+
+class MembershipApplicationCreateSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    phone = serializers.CharField(max_length=20, required=False, default="")
+    motivation = serializers.CharField(required=False, default="")
+    demand_letter = serializers.FileField(required=False, allow_null=True)
+    supporting_documents = serializers.FileField(required=False, allow_null=True)
+    rgpd_consent = serializers.BooleanField()
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Ce nom d'utilisateur existe déjà.")
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Cet email est déjà utilisé.")
+        return value
+
+    def validate_rgpd_consent(self, value):
+        if not value:
+            raise serializers.ValidationError("Le consentement RGPD est obligatoire.")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            first_name=validated_data["first_name"],
+            last_name=validated_data["last_name"],
+        )
+        Member.objects.create(
+            user=user,
+            phone=validated_data.get("phone", ""),
+            rgpd_consent=validated_data["rgpd_consent"],
+        )
+        app = MembershipApplication.objects.create(
+            user=user,
+            motivation=validated_data.get("motivation", ""),
+            demand_letter=validated_data.get("demand_letter"),
+            supporting_documents=validated_data.get("supporting_documents"),
+        )
+        return user, app

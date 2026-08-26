@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, LogOut, FileText, Users, Calendar, Camera, Newspaper, HandHeart, Phone, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, FileText, Users, Calendar, Camera, Newspaper, HandHeart, Phone, LayoutDashboard, Heart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const navLinks = [
@@ -35,7 +35,7 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const { isAuthenticated, isBureau, user, logout } = useAuth();
+  const { isAuthenticated, isBureau, isTreasurer, user, member, logout, getDashboardPath } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,6 +54,9 @@ function Navbar() {
     logout();
     navigate('/');
   };
+
+  const dashboardPath = getDashboardPath(member);
+  const dashboardLabel = isTreasurer ? 'Espace Trésorier' : isBureau ? 'Espace Bureau' : 'Espace Membre';
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg' : 'bg-white'}`}>
@@ -105,26 +108,36 @@ function Navbar() {
           {/* Auth section */}
           <div className="hidden lg:flex items-center gap-3">
             {isAuthenticated ? (
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-surface-50 transition-all">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-medium text-surface-700">{user?.first_name || user?.username}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-surface-400" />
-                </button>
-                <div className="absolute right-0 top-full w-56 bg-white rounded-xl shadow-xl border border-surface-100 py-2 mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <Link to={isBureau ? '/espace-bureau' : '/espace-membre'} className="flex items-center gap-3 px-4 py-2.5 text-sm text-surface-600 hover:text-primary-500 hover:bg-primary-50">
-                    <LayoutDashboard className="w-4 h-4" />
-                    {isBureau ? 'Espace Bureau' : 'Espace Membre'}
-                  </Link>
-                  <hr className="my-1 border-surface-100" />
-                  <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                    <LogOut className="w-4 h-4" />
-                    Déconnexion
+              <>
+                <Link to="/don" className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-accent-500 hover:bg-accent-50 rounded-lg transition-all">
+                  <Heart className="w-4 h-4" />
+                  Faire un don
+                </Link>
+                <Link to={dashboardPath} className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white text-sm font-semibold rounded-xl hover:bg-primary-600 transition-all">
+                  <LayoutDashboard className="w-4 h-4" />
+                  {dashboardLabel}
+                </Link>
+                <div className="relative group">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-surface-50 transition-all">
+                    <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-surface-700">{user?.first_name || user?.username}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-surface-400" />
                   </button>
+                  <div className="absolute right-0 top-full w-56 bg-white rounded-xl shadow-xl border border-surface-100 py-2 mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <Link to={dashboardPath} className="flex items-center gap-3 px-4 py-2.5 text-sm text-surface-600 hover:text-primary-500 hover:bg-primary-50">
+                      <LayoutDashboard className="w-4 h-4" />
+                      {dashboardLabel}
+                    </Link>
+                    <hr className="my-1 border-surface-100" />
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                      <LogOut className="w-4 h-4" />
+                      Déconnexion
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </>
             ) : (
               <Link to="/login" className="btn-primary text-sm">
                 <User className="w-4 h-4 mr-2" />
@@ -176,9 +189,13 @@ function Navbar() {
             <hr className="border-surface-100" />
             {isAuthenticated ? (
               <>
-                <Link to={isBureau ? '/espace-bureau' : '/espace-membre'} className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-primary-500 rounded-xl hover:bg-primary-50">
+                <Link to="/don" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-accent-500 rounded-xl hover:bg-accent-50">
+                  <Heart className="w-4 h-4" />
+                  Faire un don
+                </Link>
+                <Link to={dashboardPath} className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-primary-500 rounded-xl hover:bg-primary-50">
                   <LayoutDashboard className="w-4 h-4" />
-                  {isBureau ? 'Espace Bureau' : 'Espace Membre'}
+                  {dashboardLabel}
                 </Link>
                 <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 rounded-xl hover:bg-red-50">
                   <LogOut className="w-4 h-4" />

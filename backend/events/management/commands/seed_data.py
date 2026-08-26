@@ -47,6 +47,15 @@ class Command(BaseCommand):
             Member.objects.create(user=membre_user, role="member", rgpd_consent=True, membership_status=True)
             self.stdout.write(self.style.SUCCESS("Membre créé: membre / membre123"))
 
+        if not User.objects.filter(username="tresorier").exists():
+            tres_user = User.objects.create_user("tresorier", "tresorier@afe-association.org", "tresorier123")
+            tres_user.first_name = "Paul"
+            tres_user.last_name = "Bernard"
+            tres_user.save()
+            tres_member = Member.objects.create(user=tres_user, role="treasurer", rgpd_consent=True, membership_status=True, bio="Trésorier de l'AFE, chargé de la gestion financière.")
+            BureauMember.objects.create(member=tres_member, position="treasurer", display_order=2)
+            self.stdout.write(self.style.SUCCESS("Trésorier créé: tresorier / tresorier123"))
+
         now = timezone.now()
         events_data = [
             {"title": "Gala de la Fraternité 2026", "description": "Soirée de gala réunissant tous les membres et partenaires pour célébrer nos accomplissements de l'année. Au programme : dîner, témoignages, remise de prix et divertissement.", "short_description": "Soirée de gala réunissant tous les membres et partenaires.", "event_date": now + timedelta(days=20), "location": "Palais des Congrès", "status": "upcoming"},
