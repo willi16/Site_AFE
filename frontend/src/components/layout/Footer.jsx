@@ -44,7 +44,7 @@ function Footer() {
               </div>
             </div>
             <p className="text-surface-400 text-sm leading-relaxed mb-6">
-              L'Association d'Entraide et de Fraternité œuvre pour le bien-être et l'entraide au sein de notre communauté depuis sa création.
+              L'Association de Fraternité et d'Entraide œuvre pour le bien-être et l'entraide au sein de notre communauté depuis sa création.
             </p>
             <div className="flex gap-3">
               {[Globe, Share2, ExternalLink, Heart].map((Icon, i) => (
@@ -114,7 +114,7 @@ function Footer() {
       <div className="border-t border-surface-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-surface-500">
-            &copy; {new Date().getFullYear()} AFE - Association d'Entraide et de Fraternité. Tous droits réservés.
+            &copy; {new Date().getFullYear()} AFE - Association de Fraternité et d'Entraide. Tous droits réservés.
           </p>
           <p className="text-xs text-surface-500 flex items-center gap-1">
             Fait avec <Heart className="w-3 h-3 text-red-500 fill-red-500" /> pour la communauté

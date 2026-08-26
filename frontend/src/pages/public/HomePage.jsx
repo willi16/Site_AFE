@@ -39,7 +39,7 @@ function HomePage() {
           <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="max-w-3xl">
             <motion.div variants={fadeInUp} className="flex items-center gap-2 mb-6">
               <img src="/logo-afe.jpg" alt="AFE Logo" className="w-12 h-12 rounded-xl object-cover" />
-              <span className="text-white/80 font-medium">Association d'Entraide et de Fraternité</span>
+              <span className="text-white/80 font-medium">Association de Fraternité et d'Entraide</span>
             </motion.div>
             <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight mb-6 font-[var(--font-display)]">
               Ensemble pour la{' '}

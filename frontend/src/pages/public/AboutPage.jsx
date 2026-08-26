@@ -27,7 +27,7 @@ function AboutPage() {
             <span className="text-accent-400 font-bold text-sm uppercase tracking-widest">L'Association</span>
             <h1 className="text-4xl md:text-5xl font-bold text-white mt-3 mb-6 font-[var(--font-display)]">Qui sommes-nous ?</h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              Découvrez l'histoire, les valeurs et la mission de l'Association d'Entraide et de Fraternité.
+              Découvrez l'histoire, les valeurs et la mission de l'Association de Fraternité et d'Entraide.
             </p>
           </motion.div>
         </div>
@@ -41,7 +41,7 @@ function AboutPage() {
               <span className="text-accent-500 font-bold text-sm uppercase tracking-widest">Notre histoire</span>
               <h2 className="text-3xl font-bold text-surface-900 mt-3 mb-6 font-[var(--font-display)]">5 ans d'engagement</h2>
               <p className="text-surface-500 leading-relaxed mb-4">
-                Fondée le 25 juillet 2021 lors de notre première assemblée générale, l'Association d'Entraide et de Fraternité est née de la conviction profonde que la solidarité est la clé d'une société plus juste et plus humaine.
+                Fondée le 25 juillet 2021 lors de notre première assemblée générale, l'Association de Fraternité et d'Entraide est née de la conviction profonde que la solidarité est la clé d'une société plus juste et plus humaine.
               </p>
               <p className="text-surface-500 leading-relaxed mb-4">
                 De modestes débuts avec une poignée de bénévoles engagés, nous avons grandi pour devenir un acteur incontournable de la vie associative locale, regroupant aujourd'hui 24 membres actifs.
