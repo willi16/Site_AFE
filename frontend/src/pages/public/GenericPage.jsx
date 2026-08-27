@@ -368,7 +368,7 @@ function PublicGallery() {
           <p className="text-surface-500 text-lg">La galerie sera bientôt remplie.</p>
         </div>
       ) : (
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <motion.div key={filter} initial="hidden" animate="visible" variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(item => (
             <motion.div key={item.id} variants={fadeInUp} className="group relative bg-white rounded-2xl border border-surface-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all" onClick={() => setPreview(item)}>
               {item.is_video ? (
@@ -376,7 +376,7 @@ function PublicGallery() {
                   {item.media_url?.includes('youtube.com') ? (
                     <img src={`https://img.youtube.com/vi/${item.media_url.split('/').pop()}/hqdefault.jpg`} alt={item.title} className="w-full h-full object-cover opacity-80" />
                   ) : item.media_url ? (
-                    <video src={item.media_url} className="w-full h-full object-cover" muted />
+                    <video src={item.media_url} preload="none" poster={item.media_url} className="w-full h-full object-cover" muted />
                   ) : null}
                   <div className="absolute inset-0 flex items-center justify-center"><div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-all"><Play className="w-6 h-6 text-primary-600 fill-primary-600" /></div></div>
                   <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1"><Film className="w-3 h-3" /> Vidéo</span>
