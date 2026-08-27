@@ -209,17 +209,17 @@ function MembersPage() {
       {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : (
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {members.map((m) => (
-            <motion.div key={m.id} variants={fadeInUp} className="bg-white rounded-2xl border border-surface-100 p-6 text-center hover:shadow-lg transition-all">
-              <div className="w-16 h-16 rounded-full bg-primary-100 mx-auto mb-3 overflow-hidden">
-                {m.photo ? (
-                  <img src={m.photo} alt={m.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-8 h-8 text-primary-400" />
-                  </div>
-                )}
+            <motion.div key={m.id} variants={fadeInUp} className="relative aspect-[3/4] bg-white rounded-2xl border border-surface-100 overflow-hidden group hover:shadow-lg transition-all">
+              {m.photo ? (
+                <img src={m.photo} alt={m.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary-50">
+                  <User className="w-16 h-16 text-primary-200" />
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-4">
+                <h3 className="text-sm font-bold text-white">{m.full_name}</h3>
               </div>
-              <h3 className="text-sm font-bold text-surface-900">{m.full_name}</h3>
             </motion.div>
           ))}
         </motion.div>
