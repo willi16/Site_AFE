@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models.deletion import ProtectedError
 from .models import Member, BureauMember, MembershipApplication, AssociationSettings
 from .serializers import (
     MemberSerializer, MemberPublicSerializer, MemberRegisterSerializer,
@@ -112,6 +113,27 @@ class MemberViewSet(viewsets.ModelViewSet):
         )
         serializer = MemberSerializer(member)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        member = self.get_object()
+        if request.user == member.user:
+            return Response(
+                {"relation_error": "Vous ne pouvez pas supprimer votre propre compte."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if member.role in ("admin", "secretary", "treasurer", "bureau"):
+            return Response(
+                {"relation_error": f"Impossible de supprimer {member.full_name} : ce membre occupe une fonction au sein du bureau. Réassignez d'abord son poste avant de le supprimer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError as e:
+            names = ", ".join(sorted({f.__class__._meta.verbose_name for f, _ in e.protected_objects})) or "d'autres données"
+            return Response(
+                {"relation_error": f"Impossible de supprimer {member.full_name} : ce membre est encore lié à des enregistrements ({names}). Supprimez d'abord ou désactivez le membre."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class BureauMemberViewSet(viewsets.ModelViewSet):

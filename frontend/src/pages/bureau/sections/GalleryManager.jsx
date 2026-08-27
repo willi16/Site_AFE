@@ -4,7 +4,7 @@ import { Camera, Upload, Trash2, Play, Film, Image as ImageIcon, X } from 'lucid
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -29,7 +29,13 @@ export default function GalleryManager() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!form.file) { toast.error('Choisissez un média'); return; }
+    if (!form.file) { showError('Média requis', 'Veuillez choisir une image ou une vidéo.'); return; }
+    const ok = await confirmAction(
+      'Ajouter ce média ?',
+      `« ${form.title || form.file.name} » sera ajouté à la galerie en tant que ${form.file_type === 'image' ? 'image' : 'vidéo'}.`,
+      { icon: 'question', confirmText: 'Oui, ajouter' }
+    );
+    if (!ok.isConfirmed) return;
     const fd = new FormData();
     fd.append('title', form.title || form.file.name);
     fd.append('caption', form.caption);
@@ -37,21 +43,27 @@ export default function GalleryManager() {
     fd.append('file_type', form.file_type);
     if (form.file_type === 'image') fd.append('image', form.file);
     else fd.append('video', form.file);
+    showLoading('Ajout du média...');
     try {
       await api.post('/gallery/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Média ajouté');
+      closeLoading();
+      showSuccess('Média ajouté', 'Le média est visible dans la galerie.');
       setShowForm(false);
       setForm({ title: '', caption: '', category: '', file_type: 'image', file: null });
       load();
-    } catch (err) { console.error(err); toast.error('Erreur lors de l\'upload'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'ajout', extractError(err, 'Erreur lors de l\'ajout du média.')); }
   };
 
   const handleDelete = async (it) => {
-    if (!window.confirm(`Supprimer ${it.title} ?`)) return;
+    const ok = await confirmDelete(`le média « ${it.title} »`, 'Cette action est irréversible et retirera le média de la galerie.');
+    if (!ok.isConfirmed) return;
+    showLoading('Suppression en cours...');
     try {
       await api.delete(`/gallery/${it.id}/`);
+      closeLoading();
+      showSuccess('Média supprimé');
       load();
-    } catch (err) { toast.error('Erreur'); }
+    } catch (err) { closeLoading(); showError('Suppression impossible', extractError(err, 'Impossible de supprimer ce média.')); }
   };
 
   return (

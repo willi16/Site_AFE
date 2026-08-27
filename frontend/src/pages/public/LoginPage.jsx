@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { showError, showSuccess } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
@@ -27,9 +28,11 @@ function LoginPage() {
       setLoading(true);
       setError('');
       const result = await login(data.username, data.password);
+      showSuccess('Connexion réussie', 'Bienvenue !');
       navigate(result.dashboardPath);
     } catch (err) {
       setError("Identifiants incorrects. Veuillez réessayer.");
+      showError('Connexion impossible', 'Identifiants incorrects. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }

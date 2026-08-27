@@ -4,7 +4,7 @@ import { Calendar, Plus, Trash2, Upload, X } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -28,8 +28,15 @@ export default function EventsManager() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    const ok = await confirmAction(
+      'Créer cet événement ?',
+      `« ${form.title} » programmé le ${form.event_date ? new Date(form.event_date + (form.event_date.length === 16 ? ':00' : '')).toLocaleString('fr-FR') : 'date à définir'} à ${form.location || 'lieu à définir'}.`,
+      { icon: 'question', confirmText: 'Oui, créer' }
+    );
+    if (!ok.isConfirmed) return;
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
+    showLoading('Création de l\'événement...');
     try {
       const { data } = await api.post('/events/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (form.image && data.id) {
@@ -38,17 +45,20 @@ export default function EventsManager() {
         imgFd.append('caption', form.title);
         await api.post(`/events/${data.id}/images/`, imgFd, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
-      toast.success('Événement créé');
+      closeLoading();
+      showSuccess('Événement créé', `L'événement « ${form.title} » a été publié.`);
       setShowForm(false);
       setForm({ title: '', description: '', short_description: '', event_date: '', end_date: '', location: '', status: 'upcoming', image: null });
       load();
-    } catch (err) { console.error(err); toast.error('Erreur lors de la création'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de la création', extractError(err, 'Erreur lors de la création de l\'événement.')); }
   };
 
   const handleDelete = async (ev) => {
-    if (!window.confirm(`Supprimer ${ev.title} ?`)) return;
-    try { await api.delete(`/events/${ev.id}/`); load(); }
-    catch (err) { toast.error('Erreur'); }
+    const ok = await confirmDelete(`l'événement « ${ev.title} »`, 'Cette action est irréversible.');
+    if (!ok.isConfirmed) return;
+    showLoading('Suppression en cours...');
+    try { await api.delete(`/events/${ev.id}/`); closeLoading(); showSuccess('Événement supprimé'); load(); }
+    catch (err) { closeLoading(); showError('Suppression impossible', extractError(err, 'Impossible de supprimer cet événement.')); }
   };
 
   return (

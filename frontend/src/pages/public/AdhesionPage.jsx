@@ -9,6 +9,7 @@ import {
   CircleDollarSign, Clock, BadgeCheck, Gavel, Shirt, Upload, FileCheck,
 } from 'lucide-react';
 import api from '../../api/axios';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -174,6 +175,12 @@ function AdhesionPage() {
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data) => {
+    const ok = await confirmAction(
+      'Soumettre votre candidature ?',
+      `Confirmez l'envoi de la candidature d'adhésion de ${data.first_name} ${data.last_name} (${data.email}). Le bureau l'examinera prochainement.`,
+      { icon: 'question', confirmText: 'Oui, soumettre' }
+    );
+    if (!ok.isConfirmed) return;
     try {
       setLoading(true);
       setError('');
@@ -188,11 +195,16 @@ function AdhesionPage() {
       if (data.motivation) formData.append('motivation', data.motivation);
       if (demandLetter) formData.append('demand_letter', demandLetter);
       if (supportingDocs) formData.append('supporting_documents', supportingDocs);
+      showLoading('Envoi de la candidature...');
       await api.post('/members/apply/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
       setSubmitted(true);
+      showSuccess('Candidature soumise', 'Votre demande d\'adhésion a bien été transmise au bureau.');
     } catch (err) {
+      closeLoading();
       const detail = err.response?.data?.detail || err.response?.data?.username?.[0] || err.response?.data?.email?.[0] || "Erreur lors de l'inscription. Veuillez réessayer.";
-      setError(detail);
+      setError(Array.isArray(detail) ? detail[0] : detail);
+      showError('Échec de la soumission', Array.isArray(detail) ? detail[0] : detail);
     } finally {
       setLoading(false);
     }

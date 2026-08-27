@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Shield, Users, FileText, Camera, Newspaper, Eye, Download, Upload, User, Edit3, X, Film, Play } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -77,14 +78,23 @@ function BureauOrganigramme() {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !editingMember) return;
+    const ok = await confirmAction(
+      'Mettre à jour cette photo ?',
+      `La photo de profil de ${editingMember.member?.full_name || 'ce membre'} sera remplacée.`,
+      { icon: 'question', confirmText: 'Oui, mettre à jour' }
+    );
+    if (!ok.isConfirmed) { e.target.value = ''; return; }
     const memberId = editingMember.member?.id;
     const formData = new FormData();
     formData.append('photo', file);
+    showLoading('Mise à jour de la photo...');
     try {
       await api.patch(`/members/${memberId}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
+      showSuccess('Photo mise à jour');
       setEditingMember(null);
       loadBureau();
-    } catch (err) { console.error(err); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de la mise à jour de la photo.')); }
   };
 
   if (loading) return <div className="text-center py-10 text-surface-400">Chargement...</div>;
@@ -174,12 +184,21 @@ function MembersPage() {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const ok = await confirmAction(
+      settings.collective_photo ? 'Remplacer la photo collective ?' : 'Charger une photo collective ?',
+      'Cette photo sera affichée en haut de la page Nos Membres.',
+      { icon: 'question', confirmText: 'Oui, charger' }
+    );
+    if (!ok.isConfirmed) { e.target.value = ''; return; }
     const formData = new FormData();
     formData.append('collective_photo', file);
+    showLoading('Chargement de la photo...');
     try {
       await api.post('/settings/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
+      showSuccess('Photo collective mise à jour');
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors du chargement de la photo.')); }
   };
 
   return (

@@ -4,6 +4,7 @@ import { Mail, Send, ArrowLeft, Eye } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -32,6 +33,11 @@ export default function MessagesEditor() {
 
   const handleSend = async (e) => {
     e.preventDefault();
+    if (!recipient) { showError('Destinataire requis', 'Veuillez choisir un destinataire.'); return; }
+    if (!subject.trim() || !body.trim()) { showError('Champs manquants', 'Veuillez renseigner l\'objet et le message.'); return; }
+    const ok = await confirmAction('Envoyer ce message ?', `Le message sera envoyé à : ${recipient}`, { icon: 'question', confirmText: 'Oui, envoyer' });
+    if (!ok.isConfirmed) return;
+    showLoading('Envoi du message...');
     try {
       await api.post('/contact/', {
         full_name: user?.first_name || user?.username || 'AFE',
@@ -39,14 +45,19 @@ export default function MessagesEditor() {
         subject: 'info',
         message: `À: ${recipient}\nObjet: ${subject}\n\n${body}`,
       });
+      closeLoading();
+      showSuccess('Message envoyé', 'Le message a bien été envoyé.');
       setSubject(''); setBody(''); setRecipient(''); setShowEditor(false);
       loadMessages();
-    } catch (err) { console.error(err); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'envoi', extractError(err, 'Impossible d\'envoyer le message.')); }
   };
 
   const handleReply = async (e) => {
     e.preventDefault();
-    if (!selected || !reply.trim()) return;
+    if (!selected || !reply.trim()) { showError('Réponse vide', 'Écrivez une réponse avant d\'envoyer.'); return; }
+    const ok = await confirmAction('Envoyer cette réponse ?', `Réponse à ${selected.full_name}`, { icon: 'question', confirmText: 'Oui, envoyer' });
+    if (!ok.isConfirmed) return;
+    showLoading('Envoi de la réponse...');
     try {
       await api.post('/contact/', {
         full_name: 'AFE Bureau',
@@ -54,8 +65,10 @@ export default function MessagesEditor() {
         subject: 'info',
         message: `Réponse à ${selected.full_name} (${selected.email}):\n\n${reply}`,
       });
+      closeLoading();
+      showSuccess('Réponse envoyée');
       setReply(''); setSelected(null); loadMessages();
-    } catch (err) { console.error(err); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'envoi', extractError(err, 'Impossible d\'envoyer la réponse.')); }
   };
 
   return (

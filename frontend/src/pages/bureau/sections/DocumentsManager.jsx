@@ -4,7 +4,7 @@ import { FileText, Upload, X, Download, Trash2, Eye } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -36,29 +36,41 @@ export default function DocumentsManager() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!form.file) { toast.error('Sélectionnez un fichier'); return; }
+    if (!form.file) { showError('Fichier requis', 'Veuillez sélectionner un fichier à uploader.'); return; }
+    if (!form.title) { showError('Titre requis', 'Veuillez indiquer un titre pour le document.'); return; }
+    const ok = await confirmAction(
+      'Uploader ce document ?',
+      `« ${form.title} » (${CATEGORIES.find(c => c.value === form.category)?.label || form.category}) sera publié pour : ${form.visible_to === 'public' ? 'tout le monde' : form.visible_to === 'members' ? 'les membres' : 'le bureau uniquement'}.`,
+      { icon: 'question', confirmText: 'Oui, uploader' }
+    );
+    if (!ok.isConfirmed) return;
     const fd = new FormData();
     fd.append('title', form.title);
     fd.append('description', form.description);
     fd.append('category', form.category);
     fd.append('visible_to', form.visible_to);
     fd.append('file', form.file);
+    showLoading('Upload en cours...');
     try {
       await api.post('/documents/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Document uploadé');
+      closeLoading();
+      showSuccess('Document uploadé', `« ${form.title} » est maintenant disponible.`);
       setShowForm(false);
       setForm({ title: '', description: '', category: 'legal', visible_to: 'members', file: null });
       load();
-    } catch (err) { console.error(err); toast.error('Erreur lors de l\'upload'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'upload', extractError(err, 'Erreur lors de l\'upload du document.')); }
   };
 
   const handleDelete = async (d) => {
-    if (!window.confirm(`Supprimer ${d.title} ?`)) return;
+    const ok = await confirmDelete(`le document « ${d.title} »`, 'Cette action est irréversible et retirera le document du site.');
+    if (!ok.isConfirmed) return;
+    showLoading('Suppression en cours...');
     try {
       await api.delete(`/documents/${d.id}/`);
+      closeLoading();
+      showSuccess('Document supprimé');
       load();
-      toast.success('Document supprimé');
-    } catch (err) { toast.error('Erreur'); }
+    } catch (err) { closeLoading(); showError('Suppression impossible', extractError(err, 'Impossible de supprimer ce document.')); }
   };
 
   return (

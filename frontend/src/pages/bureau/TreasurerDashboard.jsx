@@ -7,7 +7,7 @@ import api from '../../api/axios';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CotisationsManager from './sections/CotisationsManager';
 import PresencesManager from './sections/PresencesManager';
-import toast from 'react-hot-toast';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -22,12 +22,21 @@ function FinancialEditor({ onAdded }) {
   const [form, setForm] = useState({ title: '', amount: '', record_type: 'income', category: '', date: '', description: '' });
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.title || !form.amount || !form.date) { showError('Champs manquants', 'Veuillez renseigner le libellé, le montant et la date.'); return; }
+    const ok = await confirmAction(
+      'Ajouter cet enregistrement ?',
+      `${form.record_type === 'income' ? 'Recette' : 'Dépense'} de ${form.amount} FCFA — ${form.title}`,
+      { icon: 'question', confirmText: 'Oui, ajouter' }
+    );
+    if (!ok.isConfirmed) return;
+    showLoading('Ajout de l\'enregistrement...');
     try {
       await api.post('/financial-records/', { ...form, amount: parseFloat(form.amount) });
-      toast.success('Enregistrement ajouté');
+      closeLoading();
+      showSuccess('Enregistrement ajouté');
       setForm({ title: '', amount: '', record_type: 'income', category: '', date: '', description: '' });
       onAdded();
-    } catch (err) { toast.error('Erreur'); }
+    } catch (err) { closeLoading(); showError('Échec de l\'ajout', extractError(err, 'Erreur lors de l\'ajout de l\'enregistrement.')); }
   };
   return (
     <motion.form initial="hidden" animate="visible" variants={fadeInUp} onSubmit={handleSubmit} className="mb-6 bg-white rounded-2xl border border-surface-100 p-6 space-y-4">

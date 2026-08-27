@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { HandCoins, FileSpreadsheet, FileText, Check } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -40,6 +40,15 @@ export default function CotisationsManager() {
 
   const togglePaid = async (memberId, label) => {
     const c = memberStatus(memberId, label);
+    const member = members.find(m => m.id === memberId);
+    const makingPaid = c ? c.amount_paid < c.amount : true;
+    const ok = await confirmAction(
+      makingPaid ? 'Marquer la cotisation comme payée ?' : 'Marquer la cotisation comme impayée ?',
+      `« ${member?.full_name || 'Membre'} » — cotisation « ${label} » : ${makingPaid ? 'sera considérée comme payée.' : 'sera marquée comme non payée.'}`,
+      { icon: 'question', confirmText: 'Oui, confirmer' }
+    );
+    if (!ok.isConfirmed) return;
+    showLoading('Mise à jour de la cotisation...');
     try {
       if (c) {
         const paid = c.amount_paid >= c.amount ? 0 : c.amount;
@@ -48,9 +57,10 @@ export default function CotisationsManager() {
       } else {
         await api.post('/cotisations/', { member: memberId, label, amount: 2500, amount_paid: 2500, status: 'paid' });
       }
-      toast.success('Cotisation mise à jour');
+      closeLoading();
+      showSuccess('Cotisation mise à jour');
       load();
-    } catch (err) { console.error(err); toast.error('Erreur'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Erreur', extractError(err, 'Impossible de mettre à jour la cotisation.')); }
   };
 
   const exportExcel = () => {

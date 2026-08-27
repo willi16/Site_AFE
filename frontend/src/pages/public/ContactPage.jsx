@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send, Clock, CheckCircle } from 'lucide-react';
 import SectionHeader from '../../components/ui/SectionHeader';
 import api from '../../api/axios';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
@@ -30,13 +31,24 @@ function ContactPage() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(contactSchema) });
 
   const onSubmit = async (data) => {
+    const ok = await confirmAction(
+      'Envoyer le message ?',
+      `Votre message sera transmis à l'association. Merci de vérifier vos informations.`,
+      { icon: 'question', confirmText: 'Oui, envoyer' }
+    );
+    if (!ok.isConfirmed) return;
     try {
       setLoading(true);
+      showLoading('Envoi du message...');
       await api.post('/contact/', data);
+      closeLoading();
+      showSuccess('Message envoyé', 'Merci, votre message a bien été transmis.');
       setSubmitted(true);
       reset();
     } catch (err) {
+      closeLoading();
       console.error(err);
+      showError('Échec de l\'envoi', extractError(err, 'Impossible d\'envoyer le message en ce moment.'));
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,7 @@ import { Users, UserPlus, Upload, X, Pencil, Trash2 } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -30,38 +30,65 @@ export default function MembersManager({ canRegister = true }) {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    const ok = await confirmAction(
+      'Enregistrer ce membre ?',
+      `Ajouter « ${form.first_name} ${form.last_name} » (${form.username}) en tant que ${form.role} ?`,
+      { icon: 'question', confirmText: 'Oui, enregistrer' }
+    );
+    if (!ok.isConfirmed) return;
+    showLoading('Enregistrement du membre...');
     try {
       await api.post('/members/staff-create/', form);
-      toast.success('Membre ajouté');
+      closeLoading();
+      showSuccess('Membre enregistré', `${form.first_name} ${form.last_name} a bien été ajouté.`);
       setShowForm(false);
       setForm({ username: '', first_name: '', last_name: '', email: '', password: '', phone: '', role: 'member' });
       load();
     } catch (err) {
-      const msg = err.response?.data?.username?.[0] || err.response?.data?.detail || 'Erreur lors de l\'ajout';
-      toast.error(typeof msg === 'string' ? msg : 'Erreur');
+      closeLoading();
+      const msg = extractError(err, 'Erreur lors de l\'ajout du membre.');
+      showError('Échec de l\'enregistrement', msg);
     }
   };
 
   const handlePhoto = async (e) => {
     const file = e.target.files[0];
     if (!file || !editingPhoto) return;
+    const ok = await confirmAction(
+      'Mettre à jour la photo ?',
+      'La photo de profil du membre sera remplacée.',
+      { icon: 'question', confirmText: 'Oui, mettre à jour' }
+    );
+    if (!ok.isConfirmed) return;
     const formData = new FormData();
     formData.append('photo', file);
+    showLoading('Mise à jour de la photo...');
     try {
       await api.patch(`/members/${editingPhoto}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Photo mise à jour');
+      closeLoading();
+      showSuccess('Photo mise à jour');
       setEditingPhoto(null);
       load();
-    } catch (err) { console.error(err); toast.error('Erreur lors de l\'upload'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de l\'upload de la photo.')); }
   };
 
   const handleDelete = async (m) => {
-    if (!window.confirm(`Supprimer le membre ${m.full_name} ?`)) return;
+    const ok = await confirmDelete(
+      `le membre ${m.full_name}`,
+      'Cette action est irréversible et retirera le membre de l\'association.'
+    );
+    if (!ok.isConfirmed) return;
+    showLoading('Suppression en cours...');
     try {
       await api.delete(`/members/${m.id}/`);
-      toast.success('Membre supprimé');
+      closeLoading();
+      showSuccess('Membre supprimé', `${m.full_name} a été retiré.`);
       load();
-    } catch (err) { console.error(err); toast.error('Impossible de supprimer'); }
+    } catch (err) {
+      closeLoading();
+      const msg = extractError(err, 'Impossible de supprimer ce membre.');
+      showError('Suppression impossible', msg);
+    }
   };
 
   const filtered = members.filter(m => roleFilter === 'all' || m.role === roleFilter);

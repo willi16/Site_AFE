@@ -4,7 +4,7 @@ import { FolderOpen, Upload, Trash2, Download, File as FileIcon } from 'lucide-r
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -29,26 +29,34 @@ export default function FichiersManager() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) { toast.error('Choisissez un fichier'); return; }
+    if (!file) { showError('Fichier requis', 'Veuillez choisir un fichier à uploader.'); return; }
+    const ok = await confirmAction('Uploader ce fichier ?', `« ${title || file.name} » sera ajouté aux fichiers du bureau.`, { icon: 'question', confirmText: 'Oui, uploader' });
+    if (!ok.isConfirmed) return;
     const fd = new FormData();
     fd.append('title', title || file.name);
     fd.append('description', 'Fichier du bureau');
     fd.append('category', 'other');
     fd.append('visible_to', 'bureau');
     fd.append('file', file);
+    showLoading('Upload en cours...');
     try {
       await api.post('/documents/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Fichier uploadé');
+      closeLoading();
+      showSuccess('Fichier uploadé');
       setTitle(''); setFile(null); setShowForm(false); load();
-    } catch (err) { console.error(err); toast.error('Erreur'); }
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'upload', extractError(err, 'Erreur lors de l\'upload du fichier.')); }
   };
 
   const handleDelete = async (f) => {
-    if (!window.confirm(`Supprimer ${f.title} ?`)) return;
+    const ok = await confirmDelete(`le fichier « ${f.title} »`, 'Cette action est irréversible.');
+    if (!ok.isConfirmed) return;
+    showLoading('Suppression en cours...');
     try {
       await api.delete(`/documents/${f.id}/`);
+      closeLoading();
+      showSuccess('Fichier supprimé');
       load();
-    } catch (err) { toast.error('Erreur'); }
+    } catch (err) { closeLoading(); showError('Suppression impossible', extractError(err, 'Impossible de supprimer ce fichier.')); }
   };
 
   return (
