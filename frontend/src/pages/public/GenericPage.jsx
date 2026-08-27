@@ -186,18 +186,20 @@ function MembersPage() {
     <div>
       {/* Photo collective */}
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
-        <div className="bg-white rounded-3xl border border-surface-100 p-8 text-center">
-          <h3 className="text-lg font-bold text-surface-900 mb-4">Photo collective des membres</h3>
+        <div className="relative w-full h-72 md:h-96 rounded-3xl border border-surface-100 overflow-hidden">
           {settings.collective_photo ? (
-            <img src={settings.collective_photo} alt="Membres" className="w-full max-w-md mx-auto rounded-2xl object-cover max-h-80" />
+            <img src={settings.collective_photo} alt="Membres" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full max-w-md mx-auto h-48 bg-surface-100 rounded-2xl flex flex-col items-center justify-center">
-              <Upload className="w-10 h-10 text-surface-300 mb-2" />
+            <div className="w-full h-full bg-surface-100 flex flex-col items-center justify-center">
+              <Upload className="w-12 h-12 text-surface-300 mb-2" />
               <p className="text-sm text-surface-400">Aucune photo collective</p>
             </div>
           )}
+          <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent px-6 py-4">
+            <h3 className="text-lg font-bold text-white">Photo collective des membres</h3>
+          </div>
           {canUpload && (
-            <label className="mt-4 inline-flex items-center gap-2 bg-primary-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer hover:bg-primary-600 transition-all">
+            <label className="absolute bottom-4 right-4 inline-flex items-center gap-2 bg-white/90 backdrop-blur text-primary-600 px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer hover:bg-white transition-all shadow-lg">
               <Upload className="w-4 h-4" />
               {settings.collective_photo ? 'Changer la photo' : 'Uploader une photo'}
               <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
