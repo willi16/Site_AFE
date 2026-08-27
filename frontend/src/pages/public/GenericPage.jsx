@@ -233,7 +233,6 @@ function MembersPage() {
 function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [previewDoc, setPreviewDoc] = useState(null);
 
   useEffect(() => {
     api.get('/documents/').then(({ data }) => {
@@ -241,59 +240,41 @@ function DocumentsPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const openDoc = (doc) => {
+    window.open(doc.file, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div>
       {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : (
-        <>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="space-y-4 max-w-3xl mx-auto">
-            {documents.map((doc) => (
-              <motion.div key={doc.id} variants={fadeInUp} className="bg-white rounded-2xl border border-surface-100 p-5 flex items-center justify-between hover:shadow-md transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-                    <FileText className="w-6 h-6 text-primary-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-surface-900 text-sm">{doc.title}</h3>
-                    <p className="text-xs text-surface-400 mt-0.5">{doc.category_display}</p>
-                  </div>
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="space-y-4 max-w-3xl mx-auto">
+          {documents.map((doc) => (
+            <motion.div key={doc.id} variants={fadeInUp} className="bg-white rounded-2xl border border-surface-100 p-5 flex items-center justify-between hover:shadow-md transition-all">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                  <FileText className="w-6 h-6 text-primary-500" />
                 </div>
-                <div className="flex items-center gap-2">
-                  {doc.file && (
-                    <>
-                      <button onClick={() => setPreviewDoc(doc)} className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100 transition-all">
-                        <Eye className="w-3.5 h-3.5" /> Voir
-                      </button>
-                      <a href={doc.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
-                        <Download className="w-3.5 h-3.5" /> Télécharger
-                      </a>
-                    </>
-                  )}
+                <div>
+                  <h3 className="font-semibold text-surface-900 text-sm">{doc.title}</h3>
+                  <p className="text-xs text-surface-400 mt-0.5">{doc.category_display}</p>
                 </div>
-              </motion.div>
-            ))}
-            {documents.length === 0 && (
-              <div className="text-center py-10 text-surface-400">Aucun document disponible.</div>
-            )}
-          </motion.div>
-
-          {/* PDF Preview Modal */}
-          {previewDoc && previewDoc.file && (
-            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
-              <div className="bg-white rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
-                  <h3 className="font-bold text-surface-900">{previewDoc.title}</h3>
-                  <div className="flex items-center gap-3">
-                    <a href={previewDoc.file} target="_blank" rel="noopener noreferrer" download className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100">
-                      <Download className="w-3.5 h-3.5" /> Télécharger
-                    </a>
-                    <button onClick={() => setPreviewDoc(null)} className="text-surface-400 hover:text-surface-600 text-lg font-bold">&times;</button>
-                  </div>
-                </div>
-                <iframe src={previewDoc.file} className="flex-1 w-full border-0" title={previewDoc.title} />
               </div>
-            </div>
+              {doc.file && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => openDoc(doc)} className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100 transition-all">
+                    <Eye className="w-3.5 h-3.5" /> Voir
+                  </button>
+                  <a href={doc.file} target="_blank" rel="noopener noreferrer" download className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
+                    <Download className="w-3.5 h-3.5" /> Télécharger
+                  </a>
+                </div>
+              )}
+            </motion.div>
+          ))}
+          {documents.length === 0 && (
+            <div className="text-center py-10 text-surface-400">Aucun document disponible.</div>
           )}
-        </>
+        </motion.div>
       )}
     </div>
   );
