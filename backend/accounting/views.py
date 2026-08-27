@@ -9,7 +9,7 @@ class IsBureau(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role in ("bureau", "admin", "treasurer")
+            and request.user.member_profile.role in ("admin", "treasurer")
         )
 
 

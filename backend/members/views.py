@@ -4,12 +4,17 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import Member, BureauMember, MembershipApplication
+from .models import Member, BureauMember, MembershipApplication, AssociationSettings
 from .serializers import (
     MemberSerializer, MemberPublicSerializer, MemberRegisterSerializer,
     BureauMemberSerializer, MembershipApplicationSerializer,
-    MembershipApplicationCreateSerializer,
+    MembershipApplicationCreateSerializer, AssociationSettingsSerializer,
 )
+
+
+def get_settings():
+    obj, _ = AssociationSettings.objects.get_or_create(pk=1)
+    return obj
 
 
 class IsAdminOrBureau(permissions.BasePermission):
@@ -88,6 +93,23 @@ class BureauMemberViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return BureauMember.objects.all()
+
+
+class AssociationSettingsView(viewsets.ViewSet):
+    def list(self, request):
+        settings_obj = get_settings()
+        serializer = AssociationSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    def create(self, request):
+        settings_obj = get_settings()
+        if request.FILES.get("collective_photo"):
+            settings_obj.collective_photo = request.FILES["collective_photo"]
+        if request.FILES.get("cover_photo"):
+            settings_obj.cover_photo = request.FILES["cover_photo"]
+        settings_obj.save()
+        serializer = AssociationSettingsSerializer(settings_obj)
+        return Response(serializer.data)
 
 
 class MembershipApplicationViewSet(viewsets.ModelViewSet):

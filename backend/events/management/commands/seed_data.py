@@ -56,6 +56,22 @@ class Command(BaseCommand):
             BureauMember.objects.create(member=tres_member, position="treasurer", display_order=2)
             self.stdout.write(self.style.SUCCESS("Trésorier créé: tresorier / tresorier123"))
 
+        for idx, (uname, fname, lname, position) in enumerate(
+            [
+                ("conseiller1", "Amadou", "Diallo", "member"),
+                ("conseiller2", "Claire", "Durand", "member"),
+            ],
+            start=1,
+        ):
+            if not User.objects.filter(username=uname).exists():
+                u = User.objects.create_user(uname, f"{uname}@afe-association.org", "conseiller123")
+                u.first_name = fname
+                u.last_name = lname
+                u.save()
+                m = Member.objects.create(user=u, role="member", rgpd_consent=True, membership_status=True, bio=f"Conseiller de l'AFE.")
+                BureauMember.objects.create(member=m, position=position, display_order=3 + idx)
+                self.stdout.write(self.style.SUCCESS(f"Conseiller créé: {uname} / conseiller123"))
+
         now = timezone.now()
         events_data = [
             {"title": "Gala de la Fraternité 2026", "description": "Soirée de gala réunissant tous les membres et partenaires pour célébrer nos accomplissements de l'année. Au programme : dîner, témoignages, remise de prix et divertissement.", "short_description": "Soirée de gala réunissant tous les membres et partenaires.", "event_date": now + timedelta(days=20), "location": "Palais des Congrès", "status": "upcoming"},

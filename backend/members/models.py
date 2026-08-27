@@ -47,7 +47,7 @@ class BureauMember(models.Model):
         ("vice_president", "Vice-Président"),
         ("secretary", "Secrétaire"),
         ("treasurer", "Trésorier"),
-        ("member", "Membre du Bureau"),
+        ("member", "Conseiller"),
     ]
 
     member = models.OneToOneField(Member, on_delete=models.CASCADE, related_name="bureau_position")
@@ -89,3 +89,16 @@ class MembershipApplication(models.Model):
 
     def __str__(self):
         return f"Candidature de {self.user.get_full_name()} - {self.get_status_display()}"
+
+
+class AssociationSettings(models.Model):
+    collective_photo = models.ImageField("Photo collective", upload_to="members/collective/", null=True, blank=True)
+    cover_photo = models.ImageField("Photo de couverture", upload_to="cover/", null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Paramètres de l'association"
+        verbose_name_plural = "Paramètres de l'association"
+
+    def __str__(self):
+        return "Paramètres de l'association"

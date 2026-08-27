@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Member, BureauMember, MembershipApplication
+from .models import Member, BureauMember, MembershipApplication, AssociationSettings
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -27,10 +27,11 @@ class MemberSerializer(serializers.ModelSerializer):
 class MemberPublicSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     photo = serializers.ImageField(read_only=True)
+    photo_id = serializers.IntegerField(source="id", read_only=True)
 
     class Meta:
         model = Member
-        fields = ["id", "full_name", "photo", "bio", "role"]
+        fields = ["id", "photo_id", "full_name", "photo", "bio", "role"]
 
 
 class BureauMemberSerializer(serializers.ModelSerializer):
@@ -149,3 +150,12 @@ class MembershipApplicationCreateSerializer(serializers.Serializer):
             supporting_documents=validated_data.get("supporting_documents"),
         )
         return user, app
+
+
+class AssociationSettingsSerializer(serializers.ModelSerializer):
+    collective_photo = serializers.ImageField(read_only=True)
+    cover_photo = serializers.ImageField(read_only=True)
+
+    class Meta:
+        model = AssociationSettings
+        fields = ["id", "collective_photo", "cover_photo", "updated_at"]

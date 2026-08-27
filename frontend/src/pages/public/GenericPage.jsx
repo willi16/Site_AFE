@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Users, FileText, Camera, Newspaper, Eye, Download, Upload, ChevronRight, User } from 'lucide-react';
-import SectionHeader from '../../components/ui/SectionHeader';
+import { Shield, Users, FileText, Camera, Newspaper, Eye, Download, Upload, User, Edit3, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,18 +17,32 @@ const positionLabels = {
 
 const positionOrder = ['president', 'vice_president', 'treasurer', 'secretary', 'member'];
 
-function OrgChartMember({ member, position, isLast }) {
+function canEditBureau() {
+  // Handled inside component via useAuth
+  return true;
+}
+
+function OrgChartMember({ member, position, editable, onEdit }) {
   return (
     <div className="flex flex-col items-center">
       <motion.div variants={fadeInUp} className="relative group">
-        <div className="w-36 bg-white rounded-2xl border border-surface-200 p-4 text-center hover:shadow-lg hover:border-primary-300 transition-all">
-          <div className="w-20 h-20 rounded-full bg-primary-100 mx-auto mb-3 overflow-hidden border-3 border-primary-200">
+        <div className="w-40 bg-white rounded-2xl border border-surface-200 p-4 text-center hover:shadow-lg hover:border-primary-300 transition-all">
+          <div className="w-20 h-20 rounded-full bg-primary-100 mx-auto mb-3 overflow-hidden border-[3px] border-primary-200 relative">
             {member.member?.photo ? (
               <img src={member.member.photo} alt={member.member.full_name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-10 h-10 text-primary-400" />
               </div>
+            )}
+            {editable && (
+              <button
+                onClick={() => onEdit(member)}
+                className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-all"
+                title="Modifier la photo"
+              >
+                <Edit3 className="w-6 h-6 text-white" />
+              </button>
             )}
           </div>
           <h3 className="text-sm font-bold text-surface-900 mb-0.5">{member.member?.full_name || 'Non assigné'}</h3>
@@ -43,26 +56,72 @@ function OrgChartMember({ member, position, isLast }) {
 function BureauOrganigramme() {
   const [bureauMembers, setBureauMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingMember, setEditingMember] = useState(null);
+  const { isBureau, member: currentUser } = useAuth();
+  const editable = isBureau || currentUser?.role === 'admin' || currentUser?.role === 'secretary';
 
-  useEffect(() => {
+  const loadBureau = () => {
     api.get('/bureau/').then(({ data }) => {
       setBureauMembers(data.results || data || []);
     }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadBureau();
   }, []);
 
   const sorted = [...bureauMembers].sort((a, b) => positionOrder.indexOf(a.position) - positionOrder.indexOf(b.position));
   const president = sorted.find(m => m.position === 'president');
   const others = sorted.filter(m => m.position !== 'president');
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !editingMember) return;
+    const memberId = editingMember.member?.id;
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+      await api.patch(`/members/${memberId}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEditingMember(null);
+      loadBureau();
+    } catch (err) { console.error(err); }
+  };
+
   if (loading) return <div className="text-center py-10 text-surface-400">Chargement...</div>;
   if (sorted.length === 0) return <div className="text-center py-10 text-surface-400">Aucun membre du bureau.</div>;
 
   return (
     <div className="max-w-4xl mx-auto">
+      {editable && editingMember && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditingMember(null)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-surface-900">Modifier la photo</h3>
+              <button onClick={() => setEditingMember(null)} className="text-surface-400 hover:text-surface-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-surface-500 mb-4">
+              {editingMember.member?.full_name} - {positionLabels[editingMember.position]}
+            </p>
+            <div className="w-24 h-24 rounded-full bg-surface-100 mx-auto mb-4 overflow-hidden">
+              {editingMember.member?.photo ? (
+                <img src={editingMember.member.photo} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center"><User className="w-10 h-10 text-surface-300" /></div>
+              )}
+            </div>
+            <label className="w-full flex items-center justify-center gap-2 bg-primary-500 text-white px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer hover:bg-primary-600 transition-all">
+              <Upload className="w-4 h-4" />
+              Choisir une photo
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Président au sommet */}
       {president && (
         <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="flex justify-center mb-2">
-          <OrgChartMember member={president} position={president.position} />
+          <OrgChartMember member={president} position={president.position} editable={editable} onEdit={setEditingMember} />
         </motion.div>
       )}
 
@@ -76,16 +135,16 @@ function BureauOrganigramme() {
       {/* Ligne horizontale */}
       {others.length > 0 && (
         <div className="flex justify-center mb-2">
-          <div className="h-0.5 bg-primary-200" style={{ width: `${Math.min(others.length * 180, 700)}px` }} />
+          <div className="h-0.5 bg-primary-200" style={{ width: `${Math.min(others.length * 200, 800)}px` }} />
         </div>
       )}
 
       {/* Autres membres en ligne */}
       <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="flex flex-wrap justify-center gap-4">
-        {others.map((m, i) => (
+        {others.map((m) => (
           <div key={m.id} className="flex flex-col items-center">
             <div className="w-0.5 h-8 bg-primary-200 mb-2" />
-            <OrgChartMember member={m} position={m.position} isLast={i === others.length - 1} />
+            <OrgChartMember member={m} position={m.position} editable={editable} onEdit={setEditingMember} />
           </div>
         ))}
       </motion.div>
@@ -96,50 +155,60 @@ function BureauOrganigramme() {
 function MembersPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({ collective_photo: null });
   const { isBureau, member: currentUser } = useAuth();
-  const [collectivePhoto, setCollectivePhoto] = useState(null);
+  const canUpload = isBureau || currentUser?.role === 'admin' || currentUser?.role === 'secretary';
 
-  useEffect(() => {
+  const loadData = () => {
     api.get('/members/directory/').then(({ data }) => {
       const list = data.results || data || [];
       setMembers(list.filter(m => m.role === 'member'));
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => {});
+    api.get('/settings/').then(({ data }) => setSettings(data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('collective_photo', file);
+    try {
+      await api.post('/settings/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      loadData();
+    } catch (err) { console.error(err); }
   };
 
   return (
     <div>
       {/* Photo collective */}
-      {(isBureau || currentUser?.role === 'admin' || currentUser?.role === 'secretary') && (
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
-          <div className="bg-white rounded-3xl border border-surface-100 p-8 text-center">
-            <h3 className="text-lg font-bold text-surface-900 mb-4">Photo collective des membres</h3>
-            {collectivePhoto ? (
-              <img src={collectivePhoto} alt="Membres" className="w-full max-w-md mx-auto rounded-2xl object-cover" />
-            ) : (
-              <div className="w-full max-w-md mx-auto h-48 bg-surface-100 rounded-2xl flex flex-col items-center justify-center">
-                <Upload className="w-10 h-10 text-surface-300 mb-2" />
-                <p className="text-sm text-surface-400">Aucune photo collective</p>
-              </div>
-            )}
+      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
+        <div className="bg-white rounded-3xl border border-surface-100 p-8 text-center">
+          <h3 className="text-lg font-bold text-surface-900 mb-4">Photo collective des membres</h3>
+          {settings.collective_photo ? (
+            <img src={settings.collective_photo} alt="Membres" className="w-full max-w-md mx-auto rounded-2xl object-cover max-h-80" />
+          ) : (
+            <div className="w-full max-w-md mx-auto h-48 bg-surface-100 rounded-2xl flex flex-col items-center justify-center">
+              <Upload className="w-10 h-10 text-surface-300 mb-2" />
+              <p className="text-sm text-surface-400">Aucune photo collective</p>
+            </div>
+          )}
+          {canUpload && (
             <label className="mt-4 inline-flex items-center gap-2 bg-primary-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer hover:bg-primary-600 transition-all">
               <Upload className="w-4 h-4" />
-              {collectivePhoto ? 'Changer la photo' : 'Uploader une photo'}
+              {settings.collective_photo ? 'Changer la photo' : 'Uploader une photo'}
               <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             </label>
-          </div>
-        </motion.div>
-      )}
+          )}
+        </div>
+      </motion.div>
 
       {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : (
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {members.map((m, i) => (
+          {members.map((m) => (
             <motion.div key={m.id} variants={fadeInUp} className="bg-white rounded-2xl border border-surface-100 p-6 text-center hover:shadow-lg transition-all">
               <div className="w-16 h-16 rounded-full bg-primary-100 mx-auto mb-3 overflow-hidden">
                 {m.photo ? (
@@ -183,7 +252,7 @@ function DocumentsPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-surface-900 text-sm">{doc.title}</h3>
-                    <p className="text-xs text-surface-400 mt-0.5">{doc.category_display} - {doc.visible_to_display || 'Public'}</p>
+                    <p className="text-xs text-surface-400 mt-0.5">{doc.category_display}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -192,7 +261,7 @@ function DocumentsPage() {
                       <button onClick={() => setPreviewDoc(doc)} className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100 transition-all">
                         <Eye className="w-3.5 h-3.5" /> Lire
                       </button>
-                      <a href={doc.file} download className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
+                      <a href={doc.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
                         <Download className="w-3.5 h-3.5" /> Télécharger
                       </a>
                     </>
@@ -212,13 +281,13 @@ function DocumentsPage() {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
                   <h3 className="font-bold text-surface-900">{previewDoc.title}</h3>
                   <div className="flex items-center gap-3">
-                    <a href={previewDoc.file} download className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100">
+                    <a href={previewDoc.file} target="_blank" rel="noopener noreferrer" download className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100">
                       <Download className="w-3.5 h-3.5" /> Télécharger
                     </a>
                     <button onClick={() => setPreviewDoc(null)} className="text-surface-400 hover:text-surface-600 text-lg font-bold">&times;</button>
                   </div>
                 </div>
-                <iframe src={previewDoc.file} className="flex-1 w-full" title={previewDoc.title} />
+                <iframe src={previewDoc.file} className="flex-1 w-full border-0" title={previewDoc.title} />
               </div>
             </div>
           )}
