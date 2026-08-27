@@ -74,6 +74,7 @@ function AppContent() {
           <Route path="/espace-tresorier/comptabilite" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/presences" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier/presence-cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -7,6 +7,7 @@ import api from '../../api/axios';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CotisationsManager from './sections/CotisationsManager';
 import PresencesManager from './sections/PresencesManager';
+import TresorierPresenceCotisations from './sections/TresorierPresenceCotisations';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
@@ -16,6 +17,7 @@ const sections = [
   { key: '', label: 'Tableau de bord', icon: LayoutDashboard, path: '/espace-tresorier' },
   { key: 'cotisations', label: 'Cotisations', icon: HandCoins, path: '/espace-tresorier/cotisations' },
   { key: 'presences', label: 'Présences', icon: ClipboardCheck, path: '/espace-tresorier/presences' },
+  { key: 'presence-cotisations', label: 'Présence + Cotisations', icon: HandCoins, path: '/espace-tresorier/presence-cotisations' },
 ];
 
 function FinancialEditor({ onAdded }) {
@@ -107,6 +109,7 @@ function TreasurerDashboard() {
           <div className="bg-white rounded-2xl border border-surface-100 p-6">
             {activeSection.key === 'cotisations' && <CotisationsManager />}
             {activeSection.key === 'presences' && <PresencesManager />}
+            {activeSection.key === 'presence-cotisations' && <TresorierPresenceCotisations />}
           </div>
         </div>
       </div>
