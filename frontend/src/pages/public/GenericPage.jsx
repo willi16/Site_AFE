@@ -261,7 +261,7 @@ function DocumentsPage() {
                   {doc.file && (
                     <>
                       <button onClick={() => setPreviewDoc(doc)} className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100 transition-all">
-                        <Eye className="w-3.5 h-3.5" /> Lire
+                        <Eye className="w-3.5 h-3.5" /> Voir
                       </button>
                       <a href={doc.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
                         <Download className="w-3.5 h-3.5" /> Télécharger
