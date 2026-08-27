@@ -33,7 +33,8 @@ export function AuthProvider({ children }) {
   const getDashboardPath = (memberData) => {
     if (!memberData) return '/espace-membre';
     if (memberData.role === 'treasurer') return '/espace-tresorier';
-    if (memberData.role === 'bureau' || memberData.role === 'admin' || memberData.role === 'secretary') return '/espace-bureau';
+    if (memberData.role === 'secretary') return '/espace-secretaire';
+    if (memberData.role === 'bureau' || memberData.role === 'admin') return '/espace-bureau';
     return '/espace-membre';
   };
 
@@ -57,12 +58,15 @@ export function AuthProvider({ children }) {
     setMember(null);
   };
 
-  const isBureau = member?.role === 'bureau' || member?.role === 'admin' || member?.role === 'secretary';
+  const isBureau = member?.role === 'bureau' || member?.role === 'admin';
+  const isSecretary = member?.role === 'secretary';
   const isTreasurer = member?.role === 'treasurer';
+  const isAdmin = member?.role === 'admin';
+  const isStaff = isBureau || isSecretary || isTreasurer;
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, member, loading, login, register, logout, isBureau, isTreasurer, isAuthenticated, getDashboardPath }}>
+    <AuthContext.Provider value={{ user, member, loading, login, register, logout, isBureau, isSecretary, isTreasurer, isAdmin, isStaff, isAuthenticated, getDashboardPath }}>
       {children}
     </AuthContext.Provider>
   );

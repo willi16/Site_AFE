@@ -35,7 +35,7 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const { isAuthenticated, isBureau, isTreasurer, user, member, logout, getDashboardPath } = useAuth();
+  const { isAuthenticated, isBureau, isTreasurer, isSecretary, isAdmin, user, member, logout, getDashboardPath } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -56,7 +56,13 @@ function Navbar() {
   };
 
   const dashboardPath = getDashboardPath(member);
-  const dashboardLabel = isTreasurer ? 'Espace Trésorier' : isBureau ? 'Espace Bureau' : 'Espace Membre';
+  const dashboardLabel = isTreasurer ? 'Espace Trésorier' : isSecretary ? 'Espace Secrétaire' : isBureau ? 'Espace Bureau' : 'Espace Membre';
+
+  const staffSpaces = [
+    { label: 'Espace Bureau', path: '/espace-bureau', visible: isBureau || isAdmin },
+    { label: 'Espace Secrétaire', path: '/espace-secretaire', visible: isSecretary || isAdmin },
+    { label: 'Espace Trésorier', path: '/espace-tresorier', visible: isTreasurer || isAdmin },
+  ].filter(s => s.visible);
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg' : 'bg-white'}`}>
@@ -126,10 +132,12 @@ function Navbar() {
                     <ChevronDown className="w-3.5 h-3.5 text-surface-400" />
                   </button>
                   <div className="absolute right-0 top-full w-56 bg-white rounded-xl shadow-xl border border-surface-100 py-2 mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                    <Link to={dashboardPath} className="flex items-center gap-3 px-4 py-2.5 text-sm text-surface-600 hover:text-primary-500 hover:bg-primary-50">
-                      <LayoutDashboard className="w-4 h-4" />
-                      {dashboardLabel}
-                    </Link>
+                    {staffSpaces.map(space => (
+                      <Link key={space.path} to={space.path} className="flex items-center gap-3 px-4 py-2.5 text-sm text-surface-600 hover:text-primary-500 hover:bg-primary-50">
+                        <LayoutDashboard className="w-4 h-4" />
+                        {space.label}
+                      </Link>
+                    ))}
                     <hr className="my-1 border-surface-100" />
                     <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
                       <LogOut className="w-4 h-4" />

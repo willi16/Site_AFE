@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class FinancialRecord(models.Model):
@@ -40,6 +41,100 @@ class MeetingReport(models.Model):
         verbose_name = "Compte-rendu de réunion"
         verbose_name_plural = "Comptes-rendus de réunions"
         ordering = ["-date"]
+
+    def __str__(self):
+        return self.title
+
+
+class Attendance(models.Model):
+    """Présence d'un membre à un événement (suivi trésorier)."""
+
+    STATUS_CHOICES = [
+        ("present", "Présent"),
+        ("absent", "Absent"),
+        ("excuse", "Excusé"),
+    ]
+
+    member = models.ForeignKey(
+        "members.Member", on_delete=models.CASCADE, related_name="attendances"
+    )
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.CASCADE, related_name="attendances", null=True, blank=True
+    )
+    event_title = models.CharField("Événement", max_length=200, blank=True)
+    event_date = models.DateField("Date", null=True, blank=True)
+    status = models.CharField("Statut", max_length=10, choices=STATUS_CHOICES, default="absent")
+    notes = models.CharField("Notes", max_length=255, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="attendance_records")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Présence"
+        verbose_name_plural = "Présences"
+        ordering = ["-event_date", "member__user__last_name"]
+        unique_together = [["member", "event"]]
+
+    def __str__(self):
+        return f"{self.member.full_name} - {self.event_title or self.event}"
+
+
+class Cotisation(models.Model):
+    """Cotisation d'un membre par événement/période (suivi trésorier)."""
+
+    STATUS_CHOICES = [
+        ("paid", "Payée"),
+        ("pending", "En attente"),
+        ("overdue", "En retard"),
+    ]
+
+    member = models.ForeignKey(
+        "members.Member", on_delete=models.CASCADE, related_name="cotisations"
+    )
+    event = models.ForeignKey(
+        "events.Event", on_delete=models.SET_NULL, null=True, blank=True, related_name="cotisations"
+    )
+    label = models.CharField("Libellé", max_length=200)
+    amount = models.DecimalField("Montant dû", max_digits=10, decimal_places=2)
+    amount_paid = models.DecimalField("Montant payé", max_digits=10, decimal_places=2, default=0)
+    status = models.CharField("Statut", max_length=10, choices=STATUS_CHOICES, default="pending")
+    due_date = models.DateField("Échéance", null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="cotisations")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Cotisation"
+        verbose_name_plural = "Cotisations"
+        ordering = ["-due_date"]
+
+    def __str__(self):
+        return f"{self.member.full_name} - {self.label}"
+
+    @property
+    def balance(self):
+        return self.amount - self.amount_paid
+
+
+class GalleryItem(models.Model):
+    """Élément de la galerie / archives (photos d'événements)."""
+
+    title = models.CharField("Titre", max_length=200)
+    image = models.ImageField("Image", upload_to="gallery/%Y/%m/", null=True, blank=True)
+    image_url = models.URLField("URL image externe", blank=True)
+    video = models.FileField("Vidéo", upload_to="gallery/videos/%Y/%m/", null=True, blank=True)
+    video_url = models.URLField("URL vidéo externe", blank=True)
+    video_platform = models.CharField("Plateforme vidéo", max_length=30, blank=True)
+    caption = models.CharField("Légende", max_length=255, blank=True)
+    category = models.CharField("Catégorie", max_length=100, blank=True)
+    file_type = models.CharField("Type", max_length=10, default="image", choices=[("image", "Image"), ("video", "Vidéo")])
+    is_published = models.BooleanField("Publié", default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="gallery_items")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Élément de galerie"
+        verbose_name_plural = "Éléments de galerie"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return self.title

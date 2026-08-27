@@ -17,7 +17,7 @@ class IsBureauOrReadOnly(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role in ("bureau", "admin", "secretary")
+            and request.user.member_profile.role in ("admin", "secretary")
         )
 
 

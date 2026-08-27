@@ -17,7 +17,9 @@ def get_settings():
     return obj
 
 
-class IsAdminOrBureau(permissions.BasePermission):
+class IsEditorOrReadOnly(permissions.BasePermission):
+    """Ecriture réservée au secrétaire et à l'admin ; les autres membres du bureau consultent uniquement."""
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -25,13 +27,13 @@ class IsAdminOrBureau(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role in ("bureau", "admin", "secretary")
+            and request.user.member_profile.role in ("admin", "secretary")
         )
 
 
 class MemberViewSet(viewsets.ModelViewSet):
     serializer_class = MemberSerializer
-    permission_classes = [IsAdminOrBureau]
+    permission_classes = [IsEditorOrReadOnly]
 
     def get_queryset(self):
         if self.request.user.is_authenticated and hasattr(self.request.user, "member_profile"):
@@ -87,9 +89,34 @@ class MemberViewSet(viewsets.ModelViewSet):
         )
 
 
+    @action(detail=False, methods=["post"], url_path="staff-create")
+    def staff_create(self, request):
+        data = request.data
+        username = data.get("username")
+        password = data.get("password") or User.objects.make_random_password()
+        email = data.get("email", "")
+        first_name = data.get("first_name", "")
+        last_name = data.get("last_name", "")
+        role = data.get("role", "member")
+        if not username:
+            return Response({"detail": "username requis"}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(username=username).exists():
+            return Response({"username": ["Utilisateur déjà existant."]}, status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name, last_name=last_name)
+        member = Member.objects.create(
+            user=user,
+            role=role if role in dict(Member.ROLE_CHOICES) else "member",
+            phone=data.get("phone", ""),
+            rgpd_consent=True,
+            membership_status=True,
+        )
+        serializer = MemberSerializer(member)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 class BureauMemberViewSet(viewsets.ModelViewSet):
     serializer_class = BureauMemberSerializer
-    permission_classes = [IsAdminOrBureau]
+    permission_classes = [IsEditorOrReadOnly]
 
     def get_queryset(self):
         return BureauMember.objects.all()

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Users, FileText, Camera, Newspaper, Eye, Download, Upload, User, Edit3, X } from 'lucide-react';
+import { Shield, Users, FileText, Camera, Newspaper, Eye, Download, Upload, User, Edit3, X, Film, Play } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -335,11 +335,113 @@ const pageConfigs = {
   },
 };
 
-const fallbackNews = [
-  { id: 1, title: 'Nouveau partenariat avec la Ville', excerpt: 'L\'AFE signe un accord de partenariat historique avec la municipalité.', created_at: '2026-08-20T10:00:00Z' },
-  { id: 2, title: 'Résultats de la collecte solidaire', excerpt: 'Grâce à votre générosité, plus de 5000€ récoltés.', created_at: '2026-08-15T10:00:00Z' },
-  { id: 3, title: 'Assemblée Générale 2026', excerpt: 'Compte-rendu de notre AG annuelle.', created_at: '2026-08-10T10:00:00Z' },
-];
+function PublicGallery() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState(null);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    api.get('/gallery/', { params: { page_size: 100 } }).then(({ data }) => setItems(data.results || data || []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const categories = ['all', ...new Set(items.map(i => i.category).filter(Boolean))];
+  const filtered = filter === 'all' ? items : items.filter(i => i.category === filter);
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-6 justify-center">
+        {categories.map(c => (
+          <button key={c} onClick={() => setFilter(c)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === c ? 'bg-primary-500 text-white' : 'bg-white text-surface-600 hover:bg-primary-50 border border-surface-100'}`}>
+            {c === 'all' ? 'Tout' : c}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <Camera className="w-16 h-16 text-surface-300 mx-auto mb-4" />
+          <p className="text-surface-500 text-lg">La galerie sera bientôt remplie.</p>
+        </div>
+      ) : (
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {filtered.map(item => (
+            <motion.div key={item.id} variants={fadeInUp} className="group relative bg-white rounded-2xl border border-surface-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all" onClick={() => setPreview(item)}>
+              {item.is_video ? (
+                <div className="relative aspect-video bg-black">
+                  {item.media_url?.includes('youtube.com') ? (
+                    <img src={`https://img.youtube.com/vi/${item.media_url.split('/').pop()}/hqdefault.jpg`} alt={item.title} className="w-full h-full object-cover opacity-80" />
+                  ) : item.media_url ? (
+                    <video src={item.media_url} className="w-full h-full object-cover" muted />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center"><div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-all"><Play className="w-6 h-6 text-primary-600 fill-primary-600" /></div></div>
+                  <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1"><Film className="w-3 h-3" /> Vidéo</span>
+                </div>
+              ) : (
+                <img src={item.media_url || item.image} alt={item.caption || item.title} className="w-full aspect-video object-cover" />
+              )}
+              <div className="p-3">
+                <p className="text-sm font-semibold text-surface-800">{item.title}</p>
+                {item.caption && item.caption !== item.title && <p className="text-xs text-surface-400">{item.caption}</p>}
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+          <div className="max-w-4xl w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-end mb-2"><button onClick={() => setPreview(null)} className="p-2 bg-white/20 rounded-lg text-white"><X className="w-5 h-5" /></button></div>
+            {preview.is_video ? (
+              preview.media_url?.includes('youtube.com') ? (
+                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                  <iframe src={preview.media_url} title={preview.title} className="absolute inset-0 w-full h-full rounded-2xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0" />
+                </div>
+              ) : (
+                <video src={preview.media_url} controls autoPlay className="w-full rounded-2xl" />
+              )
+            ) : (
+              <img src={preview.media_url || preview.image} alt={preview.title} className="w-full rounded-2xl" />
+            )}
+            <p className="text-white text-center mt-3 font-medium">{preview.title}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActualitesPage() {
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/actualites/').then(({ data }) => setNews(data.results || data || []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div>
+      {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : news.length === 0 ? (
+        <p className="text-surface-500 text-center py-16">Aucune actualité pour le moment.</p>
+      ) : (
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid md:grid-cols-3 gap-6">
+          {news.map(n => (
+            <motion.div key={n.id} variants={fadeInUp} className="card p-6">
+              {n.image && <img src={n.image} alt={n.title} className="w-full h-40 object-cover rounded-xl mb-4" />}
+              <div className="text-xs text-surface-400 mb-3">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+              <h3 className="text-lg font-bold text-surface-900 mb-2">{n.title}</h3>
+              <p className="text-sm text-surface-500">{n.excerpt || n.content}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+}
 
 function GenericPage({ pageKey }) {
   const config = pageConfigs[pageKey] || pageConfigs.bureau;
@@ -363,23 +465,8 @@ function GenericPage({ pageKey }) {
           {config.type === 'organigramme' && <BureauOrganigramme />}
           {config.type === 'members' && <MembersPage />}
           {config.type === 'documents' && <DocumentsPage />}
-          {config.type === 'archives' && (
-            <div className="text-center py-16">
-              <Camera className="w-16 h-16 text-surface-300 mx-auto mb-4" />
-              <p className="text-surface-500 text-lg">La galerie photos sera bientôt disponible.</p>
-            </div>
-          )}
-          {config.type === 'actualites' && (
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid md:grid-cols-3 gap-6">
-              {fallbackNews.map((n) => (
-                <motion.div key={n.id} variants={fadeInUp} className="card p-6">
-                  <div className="text-xs text-surface-400 mb-3">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                  <h3 className="text-lg font-bold text-surface-900 mb-2">{n.title}</h3>
-                  <p className="text-sm text-surface-500">{n.excerpt}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
+          {config.type === 'archives' && <PublicGallery />}
+          {config.type === 'actualites' && <ActualitesPage />}
         </div>
       </section>
     </div>

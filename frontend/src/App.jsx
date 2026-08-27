@@ -14,22 +14,21 @@ import GenericPage from './pages/public/GenericPage';
 import MemberDashboard from './pages/member/MemberDashboard';
 import BureauDashboard from './pages/bureau/BureauDashboard';
 import TreasurerDashboard from './pages/bureau/TreasurerDashboard';
+import SecretaryDashboard from './pages/bureau/SecretaryDashboard';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
-function ProtectedRoute({ children, requireBureau = false, requireTreasurer = false }) {
-  const { isAuthenticated, isBureau, isTreasurer, loading } = useAuth();
+function ProtectedRoute({ children, requireBureau = false, requireTreasurer = false, requireSecretary = false }) {
+  const { isAuthenticated, isBureau, isTreasurer, isSecretary, loading, getDashboardPath, member } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (requireTreasurer && !isTreasurer && !isBureau) return <Navigate to="/espace-membre" replace />;
-  if (requireBureau && !isBureau) {
-    if (isTreasurer) return <Navigate to="/espace-tresorier" replace />;
-    return <Navigate to="/espace-membre" replace />;
-  }
+  if (requireTreasurer && !isTreasurer && !isBureau) return <Navigate to={getDashboardPath(member)} replace />;
+  if (requireSecretary && !isSecretary && !isBureau) return <Navigate to={getDashboardPath(member)} replace />;
+  if (requireBureau && !isBureau && !isTreasurer && !isSecretary) return <Navigate to={getDashboardPath(member)} replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, isBureau, isTreasurer, member, loading, getDashboardPath } = useAuth();
+  const { isAuthenticated, member, loading, getDashboardPath } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
   if (isAuthenticated) return <Navigate to={getDashboardPath(member)} replace />;
   return children;
@@ -63,9 +62,18 @@ function AppContent() {
           <Route path="/espace-bureau/documents" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/comptabilite" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/fichiers" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
-          <Route path="/espace-bureau/messages" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
+          <Route path="/espace-bureau/galerie" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/messages" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/membres" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/presences" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/documents" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/fichiers" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/galerie" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/comptabilite" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier/cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier/presences" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
