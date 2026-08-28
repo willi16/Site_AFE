@@ -189,7 +189,7 @@ function HomePage() {
               </div>
               <div className="bg-white/20 rounded-xl px-6 py-3 text-white">
                 <p className="text-sm opacity-80">Secrétaire</p>
-                <p className="text-lg font-bold">91 08 90 82</p>
+                <p className="text-lg font-bold">91 08 90 82 / 98 15 05 42</p>
               </div>
             </div>
             <Link to="/don" className="inline-flex items-center gap-2 bg-white text-primary-600 px-8 py-3.5 rounded-xl font-bold hover:bg-surface-50 transition-all">

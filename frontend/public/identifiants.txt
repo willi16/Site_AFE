@@ -1,0 +1,34 @@
+=============================================
+ IDENTIFIANTS DE CONNEXION — AFE
+ Association de Fraternité et d'Entraide
+=============================================
+
+Site : https://site-afe.vercel.app
+API  : https://afe-api.onrender.com
+
+--------------------------------------------------
+ COMPTES DU BUREAU
+--------------------------------------------------
+Rôle        | Utilisateur | Mot de passe
+------------+-------------+-----------------------------
+Admin       | admin       | 45bNOKr&wTqdsC3I24
+Bureau      | bureau      | mZHjBqXUo7WBQVM0Zm&
+Trésorier   | tresorier   | Dv46XwwByrx$$NT4*d
+Secrétaire  | secretaire  | l8mP&2x3TX$U%3nq7%
+Conseiller 1| conseiller1 | rSF4^XkB*I@zUoAlqX
+Conseiller 2| conseiller2 | rSF4^XkB*I@zUoAlqX
+
+--------------------------------------------------
+ MEMBRES (mot de passe commun)
+--------------------------------------------------
+Identifiants : membre1 à membre20
+Mot de passe : rSF4^XkB*I@zUoAlqX
+
+Exemple : membre1 / rSF4^XkB*I@zUoAlqX
+
+--------------------------------------------------
+ NOTES
+--------------------------------------------------
+- Ces identifiants sont ceux de la base en ligne (Neon).
+- Le nom d'utilisateur est sensible à la casse.
+- Ne partagez pas vos mots de passe.

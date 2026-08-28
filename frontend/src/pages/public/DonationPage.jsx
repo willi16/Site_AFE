@@ -9,7 +9,7 @@ const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren:
 
 const phoneNumbers = [
   { name: 'Président', number: '92 07 59 13', role: 'Président de l\'AFE' },
-  { name: 'Secrétaire', number: '91 08 90 82', role: 'Secrétaire de l\'AFE' },
+  { name: 'Secrétaire', number: '91 08 90 82 / 98 15 05 42', role: 'Secrétaire de l\'AFE' },
 ];
 
 const donationMethods = [

@@ -20,7 +20,7 @@ const contactSchema = z.object({
 
 const contactInfo = [
   { icon: Mail, label: 'Email', value: 'associationfe@gmail.com', color: 'bg-blue-50 text-blue-600' },
-  { icon: Phone, label: 'Téléphone', value: '91 08 90 82 / 92 07 59 13', color: 'bg-green-50 text-green-600' },
+  { icon: Phone, label: 'Téléphone', value: '91 08 90 82 / 92 07 59 13 / 98 15 05 42', color: 'bg-green-50 text-green-600' },
   { icon: MapPin, label: 'Adresse', value: 'Agodékè', color: 'bg-purple-50 text-purple-600' },
   { icon: Clock, label: 'Horaires', value: 'Lun - Ven : 9h - 18h', color: 'bg-orange-50 text-orange-600' },
 ];

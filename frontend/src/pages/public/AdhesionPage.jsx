@@ -162,6 +162,7 @@ function AccordionItem({ rule, isOpen, onToggle, index }) {
 }
 
 function AdhesionPage() {
+  const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -181,9 +182,24 @@ function AdhesionPage() {
   const passportPhotoRef = useRef(null);
   const idFrontRef = useRef(null);
   const idBackRef = useRef(null);
-  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
+  const { register, handleSubmit, trigger, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
+
+  const backStep = () => {
+    setError('');
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const onSubmit = async (data) => {
+    if (step === 1) {
+      const valid = await trigger(['first_name', 'last_name', 'username', 'email', 'password']);
+      if (valid) {
+        setError('');
+        setStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
     if (!passportPhoto || !idFront || !idBack) {
       setError('La photo passeport et la pièce d\'identité (recto et verso) sont obligatoires pour l\'adhésion.');
       return;
@@ -455,71 +471,94 @@ function AdhesionPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-8 rounded-3xl border border-surface-100 shadow-sm">
-                  <h2 className="text-xl font-bold text-surface-900 mb-6 font-[var(--font-display)]">Créer votre compte</h2>
+                  <h2 className="text-xl font-bold text-surface-900 mb-2 font-[var(--font-display)]">
+                    {step === 1 ? 'Créer votre compte' : 'Vos documents'}
+                  </h2>
+                  {/* Indicateur de progression */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-surface-300'}`}>
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-primary-500 text-white' : 'bg-surface-100 text-surface-400'}`}>1</span>
+                      <span className="text-xs font-semibold">Identité & contact</span>
+                    </div>
+                    <div className={`h-0.5 flex-1 rounded ${step >= 2 ? 'bg-primary-400' : 'bg-surface-200'}`} />
+                    <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-surface-300'}`}>
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-primary-500 text-white' : 'bg-surface-100 text-surface-400'}`}>2</span>
+                      <span className="text-xs font-semibold">Documents & consentement</span>
+                    </div>
+                  </div>
                   {error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-6">{error}</div>
                   )}
-                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Prénom *</label>
-                      <input
-                        {...register('first_name')}
-                        className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                      />
-                      {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Nom *</label>
-                      <input
-                        {...register('last_name')}
-                        className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                      />
-                      {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Nom d'utilisateur *</label>
-                    <input
-                      {...register('username')}
-                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                    />
-                    {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>}
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Email *</label>
-                    <input
-                      {...register('email')}
-                      type="email"
-                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                    />
-                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Mot de passe *</label>
-                    <input
-                      {...register('password')}
-                      type="password"
-                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                    />
-                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Téléphone</label>
-                    <input
-                      {...register('phone')}
-                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                    />
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Motivation</label>
-                    <textarea
-                      {...register('motivation')}
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm resize-none"
-                      placeholder="Décrivez votre motivation pour rejoindre l'AFE..."
-                    />
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                  {step === 1 ? (
+                    <>
+                      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-surface-700 mb-1.5">Prénom *</label>
+                          <input
+                            {...register('first_name')}
+                            className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                          />
+                          {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-surface-700 mb-1.5">Nom *</label>
+                          <input
+                            {...register('last_name')}
+                            className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                          />
+                          {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
+                        </div>
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Nom d'utilisateur *</label>
+                        <input
+                          {...register('username')}
+                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                        />
+                        {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>}
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Email *</label>
+                        <input
+                          {...register('email')}
+                          type="email"
+                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                        />
+                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Mot de passe *</label>
+                        <input
+                          {...register('password')}
+                          type="password"
+                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                        />
+                        {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Téléphone</label>
+                        <input
+                          {...register('phone')}
+                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Motivation</label>
+                        <textarea
+                          {...register('motivation')}
+                          rows={3}
+                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm resize-none"
+                          placeholder="Décrivez votre motivation pour rejoindre l'AFE..."
+                        />
+                      </div>
+                      <button type="submit" className="btn-accent w-full py-3.5">
+                        <ArrowRight className="w-5 h-5 mr-2" />
+                        Continuer
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-semibold text-surface-700 mb-1.5">Lettre de demande</label>
                       <input
@@ -678,10 +717,21 @@ function AdhesionPage() {
                     </label>
                     {errors.rgpd_consent && <p className="text-red-500 text-xs mt-1">{errors.rgpd_consent.message}</p>}
                   </div>
-                  <button type="submit" disabled={loading} className="btn-accent w-full py-3.5">
-                    <HandHeart className="w-5 h-5 mr-2" />
-                    {loading ? 'Inscription en cours...' : "S'inscrire à l'AFE"}
-                  </button>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={backStep}
+                          className="btn-secondary flex-1 py-3.5"
+                        >
+                          Précédent
+                        </button>
+                        <button type="submit" disabled={loading} className="btn-accent flex-1 py-3.5">
+                          <HandHeart className="w-5 h-5 mr-2" />
+                          {loading ? 'Inscription en cours...' : "S'inscrire à l'AFE"}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </form>
               )}
             </motion.div>

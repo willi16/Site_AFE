@@ -11,8 +11,7 @@ python manage.py collectstatic --noinput
 # Application des migrations
 python manage.py migrate
 
-# Synchronisation du dossier seed/ vers Cloudinary (ne s'exécute que si
-# Cloudinary est configuré, sinon on saute pour ne pas casser le build)
-if [ -n "${CLOUDINARY_CLOUD_NAME:-}" ]; then
-  python manage.py seed_media
-fi
+# Synchronisation du dossier seed/ vers le stockage de fichiers (Cloudinary
+# pour les images/vidéos lorsque c'est configuré, stockage local pour les
+# documents PDF). S'exécute à chaque déploiement.
+python manage.py seed_media

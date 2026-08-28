@@ -38,3 +38,4 @@ Thumbs.db
 # Fichiers temporaires
 *.log
 *.tmp
+.vercel
