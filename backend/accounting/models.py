@@ -15,7 +15,7 @@ class FinancialRecord(models.Model):
     record_type = models.CharField("Type", max_length=10, choices=TYPE_CHOICES)
     category = models.CharField("Catégorie", max_length=100, blank=True)
     date = models.DateField("Date")
-    receipt = models.FileField("Justificatif", upload_to="accounting/receipts/%Y/%m/", null=True, blank=True)
+    receipt = models.FileField("Justificatif", upload_to="accounting/receipts/%Y/%m/", max_length=500, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="financial_records")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -32,7 +32,7 @@ class MeetingReport(models.Model):
     title = models.CharField("Titre", max_length=200)
     date = models.DateField("Date de la réunion")
     summary = models.TextField("Résumé")
-    file = models.FileField("PV", upload_to="meetings/%Y/%m/", null=True, blank=True)
+    file = models.FileField("PV", upload_to="meetings/%Y/%m/", max_length=500, null=True, blank=True)
     visible_to = models.CharField("Visible pour", max_length=20, default="bureau")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="meeting_reports")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -163,9 +163,9 @@ class GalleryItem(models.Model):
     """Élément de la galerie / archives (photos d'événements)."""
 
     title = models.CharField("Titre", max_length=200)
-    image = models.ImageField("Image", upload_to="gallery/%Y/%m/", null=True, blank=True)
+    image = models.ImageField("Image", upload_to="gallery/%Y/%m/", max_length=500, null=True, blank=True)
     image_url = models.URLField("URL image externe", blank=True)
-    video = models.FileField("Vidéo", upload_to="gallery/videos/%Y/%m/", null=True, blank=True)
+    video = models.FileField("Vidéo", upload_to="gallery/videos/%Y/%m/", max_length=500, null=True, blank=True)
     video_url = models.URLField("URL vidéo externe", blank=True)
     video_platform = models.CharField("Plateforme vidéo", max_length=30, blank=True)
     caption = models.CharField("Légende", max_length=255, blank=True)

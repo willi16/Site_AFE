@@ -31,7 +31,7 @@ class Event(models.Model):
 
 class EventImage(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField("Image", upload_to="events/%Y/%m/")
+    image = models.ImageField("Image", upload_to="events/%Y/%m/", max_length=500)
     caption = models.CharField("Légende", max_length=200, blank=True)
     order = models.PositiveIntegerField("Ordre", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -49,7 +49,7 @@ class Actualite(models.Model):
     title = models.CharField("Titre", max_length=200)
     content = models.TextField("Contenu")
     excerpt = models.CharField("Extrait", max_length=300, blank=True)
-    image = models.ImageField("Image", upload_to="actualites/%Y/%m/", null=True, blank=True)
+    image = models.ImageField("Image", upload_to="actualites/%Y/%m/", max_length=500, null=True, blank=True)
     is_published = models.BooleanField("Publié", default=True)
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="actualites")
     created_at = models.DateTimeField(auto_now_add=True)

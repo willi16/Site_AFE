@@ -111,7 +111,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {
         "BACKEND": (
-            "cloudinary_storage.storage.MediaCloudinaryStorage"
+            "afe_api.cloudinary.MediaCloudinaryStorageAuto"
             if env("CLOUDINARY_CLOUD_NAME", default=None)
             else "django.core.files.storage.FileSystemStorage"
         ),
@@ -126,6 +126,7 @@ CLOUDINARY_STORAGE = {
     "CLOUD_NAME": env("CLOUDINARY_CLOUD_NAME", default=None),
     "API_KEY": env("CLOUDINARY_API_KEY", default=None),
     "API_SECRET": env("CLOUDINARY_API_SECRET", default=None),
+    "RESOURCE_TYPE": "auto",
 }
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"

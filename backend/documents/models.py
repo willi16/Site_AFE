@@ -19,7 +19,7 @@ class Document(models.Model):
 
     title = models.CharField("Titre", max_length=200)
     description = models.TextField("Description", blank=True)
-    file = models.FileField("Fichier", upload_to="documents/%Y/%m/")
+    file = models.FileField("Fichier", upload_to="documents/%Y/%m/", max_length=500)
     category = models.CharField("Catégorie", max_length=20, choices=CATEGORY_CHOICES)
     visible_to = models.CharField("Visible pour", max_length=20, choices=VISIBILITY_CHOICES, default="members")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="uploaded_documents")

@@ -83,10 +83,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write("Création des données fictives...")
 
-        admin = self._ensure_user("admin", "admin@afe-association.org", "admin123", is_superuser=True)
+        admin = self._ensure_user("admin", "admin@afe-association.org", "45bNOKr&wTqdsC3I24", is_superuser=True)
         if not Member.objects.filter(user=admin).exists():
             Member.objects.create(user=admin, role="admin", rgpd_consent=True, membership_status=True)
-            self.stdout.write(self.style.SUCCESS("Admin créé: admin / admin123"))
+            self.stdout.write(self.style.SUCCESS("Admin créé: admin / 45bNOKr&wTqdsC3I24"))
 
         self._seed_accounts()
         admin = User.objects.get(username="admin")
@@ -114,11 +114,11 @@ class Command(BaseCommand):
 
     def _seed_accounts(self):
         accounts = [
-            ("bureau", "bureau@afe-association.org", "bureau123", "Marie", "Dupont", "bureau", "president", 1, "Présidente de l'AFE depuis 2020."),
-            ("tresorier", "tresorier@afe-association.org", "tresorier123", "Paul", "Bernard", "treasurer", "treasurer", 2, "Trésorier de l'AFE, chargé de la gestion financière."),
-            ("secretaire", "secretaire@afe-association.org", "secretaire123", "Sophie", "Leclerc", "secretary", "secretary", 3, "Secrétaire de l'AFE, chargée de la correspondance et des archives."),
-            ("conseiller1", "conseiller1@afe-association.org", "conseiller123", "Amadou", "Diallo", "member", "member", 4, "Conseiller de l'AFE."),
-            ("conseiller2", "conseiller2@afe-association.org", "conseiller123", "Claire", "Durand", "member", "member", 5, "Conseillère de l'AFE."),
+            ("bureau", "bureau@afe-association.org", "mZHjBqXUo7WBQVM0Zm&", "Marie", "Dupont", "bureau", "president", 1, "Présidente de l'AFE depuis 2020."),
+            ("tresorier", "tresorier@afe-association.org", "Dv46XwwByrx$$NT4*d", "Paul", "Bernard", "treasurer", "treasurer", 2, "Trésorier de l'AFE, chargé de la gestion financière."),
+            ("secretaire", "secretaire@afe-association.org", "l8mP&2x3TX$U%3nq7%", "Sophie", "Leclerc", "secretary", "secretary", 3, "Secrétaire de l'AFE, chargée de la correspondance et des archives."),
+            ("conseiller1", "conseiller1@afe-association.org", "rSF4^XkB*I@zUoAlqX", "Amadou", "Diallo", "member", "member", 4, "Conseiller de l'AFE."),
+            ("conseiller2", "conseiller2@afe-association.org", "rSF4^XkB*I@zUoAlqX", "Claire", "Durand", "member", "member", 5, "Conseillère de l'AFE."),
         ]
         for uname, email, pwd, fn, ln, role, pos, disp, bio in accounts:
             if not User.objects.filter(username=uname).exists():
@@ -145,7 +145,7 @@ class Command(BaseCommand):
         for uname, fn, ln in members_data:
             if uname in existing:
                 continue
-            user = User.objects.create_user(uname, f"{uname}@afe-association.org", "membre123", first_name=fn, last_name=ln)
+            user = User.objects.create_user(uname, f"{uname}@afe-association.org", "rSF4^XkB*I@zUoAlqX", first_name=fn, last_name=ln)
             Member.objects.create(
                 user=user, role="member", rgpd_consent=True, membership_status=True,
                 membership_date=now - timedelta(days=30 * (int(uname[-1]) % 12 + 1)),

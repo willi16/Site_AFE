@@ -26,7 +26,7 @@ class Member(models.Model):
     membership_date = models.DateField("Date d'adhésion", null=True, blank=True)
     phone = models.CharField("Téléphone", max_length=20, blank=True)
     address = models.TextField("Adresse", blank=True)
-    photo = models.ImageField("Photo", upload_to="members/photos/", null=True, blank=True)
+    photo = models.ImageField("Photo", upload_to="members/photos/", max_length=500, null=True, blank=True)
     bio = models.TextField("Biographie", blank=True)
     show_in_directory = models.BooleanField("Afficher dans l'annuaire", default=True)
     rgpd_consent = models.BooleanField("Consentement RGPD", default=False)
@@ -82,11 +82,11 @@ class MembershipApplication(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="applications")
-    photo = models.ImageField("Photo passeport", upload_to="applications/photos/%Y/%m/", null=True, blank=True)
-    id_front = models.ImageField("Pièce d'identité (recto)", upload_to="applications/id/%Y/%m/", null=True, blank=True)
-    id_back = models.ImageField("Pièce d'identité (verso)", upload_to="applications/id/%Y/%m/", null=True, blank=True)
-    demand_letter = models.FileField("Lettre de demande", upload_to="applications/letters/%Y/%m/", null=True, blank=True)
-    supporting_documents = models.FileField("Documents justificatifs", upload_to="applications/documents/%Y/%m/", null=True, blank=True)
+    photo = models.ImageField("Photo passeport", upload_to="applications/photos/%Y/%m/", max_length=500, null=True, blank=True)
+    id_front = models.ImageField("Pièce d'identité (recto)", upload_to="applications/id/%Y/%m/", max_length=500, null=True, blank=True)
+    id_back = models.ImageField("Pièce d'identité (verso)", upload_to="applications/id/%Y/%m/", max_length=500, null=True, blank=True)
+    demand_letter = models.FileField("Lettre de demande", upload_to="applications/letters/%Y/%m/", max_length=500, null=True, blank=True)
+    supporting_documents = models.FileField("Documents justificatifs", upload_to="applications/documents/%Y/%m/", max_length=500, null=True, blank=True)
     motivation = models.TextField("Motivation", blank=True)
     status = models.CharField("Statut", max_length=20, choices=STATUS_CHOICES, default="pending")
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_applications")
@@ -104,8 +104,8 @@ class MembershipApplication(models.Model):
 
 
 class AssociationSettings(models.Model):
-    collective_photo = models.ImageField("Photo collective", upload_to="members/collective/", null=True, blank=True)
-    cover_photo = models.ImageField("Photo de couverture", upload_to="cover/", null=True, blank=True)
+    collective_photo = models.ImageField("Photo collective", upload_to="members/collective/", max_length=500, null=True, blank=True)
+    cover_photo = models.ImageField("Photo de couverture", upload_to="cover/", max_length=500, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
