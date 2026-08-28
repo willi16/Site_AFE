@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.filters import SearchFilter, OrderingFilter
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -16,6 +18,12 @@ from .serializers import (
 def get_settings():
     obj, _ = AssociationSettings.objects.get_or_create(pk=1)
     return obj
+
+
+class MemberPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 class IsEditorOrReadOnly(permissions.BasePermission):
@@ -35,12 +43,21 @@ class IsEditorOrReadOnly(permissions.BasePermission):
 class MemberViewSet(viewsets.ModelViewSet):
     serializer_class = MemberSerializer
     permission_classes = [IsEditorOrReadOnly]
+    pagination_class = MemberPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["user__username", "user__first_name", "user__last_name", "user__email", "phone", "role"]
+    ordering_fields = ["user__first_name", "user__last_name", "joined_date", "role"]
+    ordering = ["user__last_name"]
 
     def get_queryset(self):
+        qs = Member.objects.all()
+        role = self.request.query_params.get("role")
+        if role:
+            qs = qs.filter(role=role)
         if self.request.user.is_authenticated and hasattr(self.request.user, "member_profile"):
             if self.request.user.member_profile.role in ("bureau", "admin", "secretary"):
-                return Member.objects.all()
-        return Member.objects.filter(is_active_member=True, show_in_directory=True)
+                return qs
+        return qs.filter(is_active_member=True, show_in_directory=True)
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
@@ -134,6 +151,47 @@ class MemberViewSet(viewsets.ModelViewSet):
                 {"relation_error": f"Impossible de supprimer {member.full_name} : ce membre est encore lié à des enregistrements ({names}). Supprimez d'abord ou désactivez le membre."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    def _set_account_status(self, member, account_status):
+        member.account_status = account_status
+        member.save(update_fields=["account_status"])
+        user = member.user
+        user.is_active = account_status == "active"
+        user.save(update_fields=["is_active"])
+
+    def _check_target_not_self(self, request, member, action_label):
+        if request.user == member.user:
+            return Response(
+                {"detail": f"Vous ne pouvez pas {action_label} votre propre compte."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="activate")
+    def activate(self, request, pk=None):
+        member = self.get_object()
+        err = self._check_target_not_self(request, member, "activer")
+        if err:
+            return err
+        self._set_account_status(member, "active")
+        return Response({"detail": f"Le compte de {member.full_name} a été activé."})
+
+    @action(detail=True, methods=["post"], url_path="suspend")
+    def suspend(self, request, pk=None):
+        member = self.get_object()
+        err = self._check_target_not_self(request, member, "suspendre")
+        if err:
+            return err
+        self._set_account_status(member, "suspended")
+        return Response({"detail": f"Le compte de {member.full_name} a été suspendu."})
+
+    @action(detail=True, methods=["post"], url_path="deactivate")
+    def deactivate(self, request, pk=None):
+        member = self.get_object()
+        err = self._check_target_not_self(request, member, "désactiver")
+        if err:
+            return err
+        self._set_account_status(member, "deactivated")
+        return Response({"detail": f"Le compte de {member.full_name} a été désactivé."})
 
 
 class BureauMemberViewSet(viewsets.ModelViewSet):

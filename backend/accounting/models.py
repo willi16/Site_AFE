@@ -115,6 +115,50 @@ class Cotisation(models.Model):
         return self.amount - self.amount_paid
 
 
+class Donation(models.Model):
+    """Don d'un visiteur (sans compte) effectué sur l'un des numéros de l'association."""
+
+    STATUS_CHOICES = [
+        ("received", "Reçu"),
+        ("confirmed", "Confirmé"),
+    ]
+
+    donor_name = models.CharField("Nom du donateur", max_length=200)
+    donor_phone = models.CharField("Téléphone du donateur", max_length=20, blank=True)
+    method = models.CharField("Méthode", max_length=100, blank=True)
+    target_number = models.CharField("Numéro de réception", max_length=50, blank=True)
+    amount = models.DecimalField("Montant", max_digits=12, decimal_places=2)
+    message = models.TextField("Message", blank=True)
+    status = models.CharField("Statut", max_length=20, choices=STATUS_CHOICES, default="received")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Don"
+        verbose_name_plural = "Dons"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Don de {self.donor_name} - {self.amount}"
+
+
+class Notification(models.Model):
+    """Notification interne destinée à un membre (ex. nouveau don pour le secrétaire)."""
+
+    recipient = models.ForeignKey("members.Member", on_delete=models.CASCADE, related_name="notifications")
+    title = models.CharField("Titre", max_length=200)
+    message = models.TextField("Message", blank=True)
+    is_read = models.BooleanField("Lue", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
 class GalleryItem(models.Model):
     """Élément de la galerie / archives (photos d'événements)."""
 

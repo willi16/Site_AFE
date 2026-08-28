@@ -170,11 +170,24 @@ function AdhesionPage() {
   const [supportingDocs, setSupportingDocs] = useState(null);
   const [demandLetterName, setDemandLetterName] = useState('');
   const [supportingDocsName, setSupportingDocsName] = useState('');
+  const [passportPhoto, setPassportPhoto] = useState(null);
+  const [idFront, setIdFront] = useState(null);
+  const [idBack, setIdBack] = useState(null);
+  const [passportPhotoName, setPassportPhotoName] = useState('');
+  const [idFrontName, setIdFrontName] = useState('');
+  const [idBackName, setIdBackName] = useState('');
   const demandLetterRef = useRef(null);
   const supportingDocsRef = useRef(null);
+  const passportPhotoRef = useRef(null);
+  const idFrontRef = useRef(null);
+  const idBackRef = useRef(null);
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data) => {
+    if (!passportPhoto || !idFront || !idBack) {
+      setError('La photo passeport et la pièce d\'identité (recto et verso) sont obligatoires pour l\'adhésion.');
+      return;
+    }
     const ok = await confirmAction(
       'Soumettre votre candidature ?',
       `Confirmez l'envoi de la candidature d'adhésion de ${data.first_name} ${data.last_name} (${data.email}). Le bureau l'examinera prochainement.`,
@@ -193,6 +206,9 @@ function AdhesionPage() {
       formData.append('rgpd_consent', 'true');
       if (data.phone) formData.append('phone', data.phone);
       if (data.motivation) formData.append('motivation', data.motivation);
+      if (passportPhoto) formData.append('photo', passportPhoto);
+      if (idFront) formData.append('id_front', idFront);
+      if (idBack) formData.append('id_back', idBack);
       if (demandLetter) formData.append('demand_letter', demandLetter);
       if (supportingDocs) formData.append('supporting_documents', supportingDocs);
       showLoading('Envoi de la candidature...');
@@ -559,6 +575,96 @@ function AdhesionPage() {
                       </button>
                     </div>
                   </div>
+
+                  <div className="mb-6 bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                    <p className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" /> Documents obligatoires
+                    </p>
+                    <div className="grid sm:grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Photo passeport *</label>
+                        <input
+                          ref={passportPhotoRef}
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e, setPassportPhoto, setPassportPhotoName)}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => passportPhotoRef.current?.click()}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-surface-300 hover:border-primary-400 hover:bg-primary-50/30 transition-all text-sm"
+                        >
+                          {passportPhotoName ? (
+                            <>
+                              <FileCheck className="w-5 h-5 text-primary-500 shrink-0" />
+                              <span className="text-surface-700 truncate">{passportPhotoName}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-5 h-5 text-surface-400 shrink-0" />
+                              <span className="text-surface-400">Choisir la photo passeport</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Pièce d'identité — recto *</label>
+                        <input
+                          ref={idFrontRef}
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e, setIdFront, setIdFrontName)}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => idFrontRef.current?.click()}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-surface-300 hover:border-primary-400 hover:bg-primary-50/30 transition-all text-sm"
+                        >
+                          {idFrontName ? (
+                            <>
+                              <FileCheck className="w-5 h-5 text-primary-500 shrink-0" />
+                              <span className="text-surface-700 truncate">{idFrontName}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-5 h-5 text-surface-400 shrink-0" />
+                              <span className="text-surface-400">Choisir le recto</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-surface-700 mb-1.5">Pièce d'identité — verso *</label>
+                        <input
+                          ref={idBackRef}
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e, setIdBack, setIdBackName)}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => idBackRef.current?.click()}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-surface-300 hover:border-primary-400 hover:bg-primary-50/30 transition-all text-sm"
+                        >
+                          {idBackName ? (
+                            <>
+                              <FileCheck className="w-5 h-5 text-primary-500 shrink-0" />
+                              <span className="text-surface-700 truncate">{idBackName}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-5 h-5 text-surface-400 shrink-0" />
+                              <span className="text-surface-400">Choisir le verso</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mb-6">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input

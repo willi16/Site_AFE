@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, LogOut, FileText, Users, Calendar, Camera, Newspaper, HandHeart, Phone, LayoutDashboard, Heart } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, FileText, Users, Calendar, Camera, Newspaper, HandHeart, Phone, LayoutDashboard, Heart, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const navLinks = [
   { label: 'Accueil', path: '/' },
@@ -36,6 +37,7 @@ function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const { isAuthenticated, isBureau, isTreasurer, isSecretary, isAdmin, user, member, logout, getDashboardPath } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -113,6 +115,9 @@ function Navbar() {
 
           {/* Auth section */}
           <div className="hidden lg:flex items-center gap-3">
+            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-surface-50 text-surface-500" title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}>
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
             {isAuthenticated ? (
               <>
                 <Link to="/don" className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-accent-500 hover:bg-accent-50 rounded-lg transition-all">
@@ -165,6 +170,10 @@ function Navbar() {
       {mobileOpen && (
         <div className="lg:hidden bg-white border-t border-surface-100 shadow-xl animate-fadeInUp">
           <div className="px-4 py-4 space-y-2">
+            <button onClick={toggleTheme} className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-surface-700 rounded-xl hover:bg-surface-50">
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+            </button>
             {navLinks.map((link) => (
               <div key={link.label}>
                 {link.children ? (

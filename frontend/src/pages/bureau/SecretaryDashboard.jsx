@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Users, ClipboardCheck, FileText, FolderOpen, Camera, ArrowLeft, LayoutDashboard, PenTool } from 'lucide-react';
+import { Mail, Users, ClipboardCheck, FileText, FolderOpen, Camera, ArrowLeft, LayoutDashboard, PenTool, CalendarDays, Newspaper, HandCoins } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -11,6 +11,9 @@ import PresencesManager from './sections/PresencesManager';
 import DocumentsManager from './sections/DocumentsManager';
 import FichiersManager from './sections/FichiersManager';
 import GalleryManager from './sections/GalleryManager';
+import EventsManager from './sections/EventsManager';
+import ActualitesManager from './sections/ActualitesManager';
+import DonationsManager from './sections/DonationsManager';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -18,8 +21,11 @@ const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren:
 const sections = [
   { key: '', label: 'Tableau de bord', icon: LayoutDashboard, path: '/espace-secretaire' },
   { key: 'messages', label: 'Messages', icon: Mail, path: '/espace-secretaire/messages' },
+  { key: 'agenda', label: 'Agenda', icon: CalendarDays, path: '/espace-secretaire/agenda' },
   { key: 'membres', label: 'Membres', icon: Users, path: '/espace-secretaire/membres' },
   { key: 'presences', label: 'Présences', icon: ClipboardCheck, path: '/espace-secretaire/presences' },
+  { key: 'actualites', label: 'Actualités', icon: Newspaper, path: '/espace-secretaire/actualites' },
+  { key: 'dons', label: 'Dons & Notifications', icon: HandCoins, path: '/espace-secretaire/dons' },
   { key: 'documents', label: 'Documents & PV', icon: FileText, path: '/espace-secretaire/documents' },
   { key: 'fichiers', label: 'Fichiers', icon: FolderOpen, path: '/espace-secretaire/fichiers' },
   { key: 'galerie', label: 'Galerie', icon: Camera, path: '/espace-secretaire/galerie' },
@@ -64,8 +70,11 @@ function SecretaryDashboard() {
           </div>
           <div className="bg-white rounded-2xl border border-surface-100 p-6">
             {activeSection.key === 'messages' && <MessagesEditor />}
+            {activeSection.key === 'agenda' && <EventsManager />}
             {activeSection.key === 'membres' && <MembersManager />}
             {activeSection.key === 'presences' && <PresencesManager />}
+            {activeSection.key === 'actualites' && <ActualitesManager />}
+            {activeSection.key === 'dons' && <DonationsManager />}
             {activeSection.key === 'documents' && <DocumentsManager />}
             {activeSection.key === 'fichiers' && <FichiersManager />}
             {activeSection.key === 'galerie' && <GalleryManager />}

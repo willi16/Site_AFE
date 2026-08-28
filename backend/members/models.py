@@ -11,8 +11,17 @@ class Member(models.Model):
         ("admin", "Admin"),
     ]
 
+    ACCOUNT_STATUS_CHOICES = [
+        ("active", "Actif"),
+        ("suspended", "Suspendu"),
+        ("deactivated", "Désactivé"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="member_profile")
     role = models.CharField("Rôle", max_length=20, choices=ROLE_CHOICES, default="member")
+    account_status = models.CharField(
+        "Statut du compte", max_length=20, choices=ACCOUNT_STATUS_CHOICES, default="active"
+    )
     membership_status = models.BooleanField("Cotisation à jour", default=False)
     membership_date = models.DateField("Date d'adhésion", null=True, blank=True)
     phone = models.CharField("Téléphone", max_length=20, blank=True)
@@ -73,6 +82,9 @@ class MembershipApplication(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="applications")
+    photo = models.ImageField("Photo passeport", upload_to="applications/photos/%Y/%m/", null=True, blank=True)
+    id_front = models.ImageField("Pièce d'identité (recto)", upload_to="applications/id/%Y/%m/", null=True, blank=True)
+    id_back = models.ImageField("Pièce d'identité (verso)", upload_to="applications/id/%Y/%m/", null=True, blank=True)
     demand_letter = models.FileField("Lettre de demande", upload_to="applications/letters/%Y/%m/", null=True, blank=True)
     supporting_documents = models.FileField("Documents justificatifs", upload_to="applications/documents/%Y/%m/", null=True, blank=True)
     motivation = models.TextField("Motivation", blank=True)

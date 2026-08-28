@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/public/HomePage';
@@ -65,6 +66,9 @@ function AppContent() {
           <Route path="/espace-bureau/galerie" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-secretaire" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
           <Route path="/espace-secretaire/messages" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/agenda" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/actualites" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
+          <Route path="/espace-secretaire/dons" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
           <Route path="/espace-secretaire/membres" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
           <Route path="/espace-secretaire/presences" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
           <Route path="/espace-secretaire/documents" element={<ProtectedRoute requireSecretary><SecretaryDashboard /></ProtectedRoute>} />
@@ -75,6 +79,7 @@ function AppContent() {
           <Route path="/espace-tresorier/cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/presences" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/presence-cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
+          <Route path="/espace-tresorier/etat-global" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -86,11 +91,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

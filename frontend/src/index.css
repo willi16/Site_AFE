@@ -151,3 +151,26 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s infinite;
 }
+
+/* ===== Dark mode (class `.dark` on <html>) ===== */
+.dark {
+  --color-surface-50: #0c1322;
+  --color-surface-100: #131c30;
+  --color-surface-200: #1d2a44;
+  --color-surface-300: #33425f;
+  --color-surface-400: #5a6b8a;
+  --color-surface-500: #8494af;
+  --color-surface-600: #a7b4cb;
+  --color-surface-700: #c4cede;
+  --color-surface-800: #dde3ee;
+  --color-surface-900: #eef2f8;
+}
+
+.dark body {
+  background-color: var(--color-surface-50);
+  color: var(--color-surface-800);
+}
+
+.dark .bg-white {
+  background-color: var(--color-surface-100) !important;
+}

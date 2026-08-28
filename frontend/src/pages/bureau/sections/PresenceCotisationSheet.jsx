@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, FileSpreadsheet, FileText, Check, ClipboardCheck } from 'lucide-react';
+import { Save, FileSpreadsheet, FileText, ClipboardCheck } from 'lucide-react';
 import api from '../../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
@@ -25,7 +25,7 @@ export default function PresenceCotisationSheet({
   canEditCotisations = true,
 }) {
   const [presence, setPresence] = useState({});
-  const [cotis, setCotis] = useState({});
+  const [amounts, setAmounts] = useState({});
   const [existingCotis, setExistingCotis] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,12 +35,17 @@ export default function PresenceCotisationSheet({
     ? labels
     : [DEFAULT_MONTHLY_LABEL, ...labels.filter(l => l !== DEFAULT_MONTHLY_LABEL)];
 
+  const getDueAmount = (memberId, label) => {
+    const found = existingCotis.find(c => c.member === memberId && c.label === label);
+    return found ? parseFloat(found.amount || DEFAULT_AMOUNT) : DEFAULT_AMOUNT;
+  };
+
   useEffect(() => {
     if (!members.length) return;
     setLoading(true);
-    const init = {};
-    members.forEach(m => { init[m.id] = 'present'; });
-    setPresence(init);
+    const initPresence = {};
+    members.forEach(m => { initPresence[m.id] = 'present'; });
+    setPresence(initPresence);
     const tasks = [];
     if (withPresence && eventId) {
       tasks.push(api.get('/attendances/', { params: { event: eventId, page_size: 100 } }).then(({ data }) => {
@@ -52,18 +57,17 @@ export default function PresenceCotisationSheet({
     tasks.push(api.get('/cotisations/', { params: { page_size: 500 } }).then(({ data }) => {
       const rows = data.results || data || [];
       setExistingCotis(rows);
-      const map = {};
+      const amountsMap = {};
       rows.forEach(r => {
-        if (!map[r.member]) map[r.member] = {};
-        const label = r.label;
-        map[r.member][label] = r.status === 'paid';
+        if (!amountsMap[r.member]) amountsMap[r.member] = {};
+        amountsMap[r.member][r.label] = parseFloat(r.amount_paid || 0);
       });
-      setCotis(prev => {
+      setAmounts(prev => {
         const next = { ...prev };
         members.forEach(m => {
-          next[m.id] = { ...(next[m.id] || {}), ...(map[m.id] || {}) };
+          next[m.id] = { ...(next[m.id] || {}) };
           cotisationLabels.forEach(lbl => {
-            if (next[m.id][lbl] === undefined) next[m.id][lbl] = false;
+            if (next[m.id][lbl] === undefined) next[m.id][lbl] = amountsMap[m.id]?.[lbl] ?? 0;
           });
         });
         return next;
@@ -74,28 +78,26 @@ export default function PresenceCotisationSheet({
 
   const togglePresence = (id, val) => setPresence(p => ({ ...p, [id]: val }));
 
-  const toggleCotis = (memberId, label) => setCotis(c => ({
-    ...c,
-    [memberId]: { ...(c[memberId] || {}), [label]: !(c[memberId] && c[memberId][label]) },
-  }));
-
-  const memberPaid = (m) => cotisationLabels.reduce((s, l) => s + ((cotis[m.id] && cotis[m.id][l]) ? getAmount(m.id, l) : 0), 0);
-
-  const getAmount = (memberId, label) => {
-    const found = existingCotis.find(c => c.member === memberId && c.label === label);
-    return found ? parseFloat(found.amount || DEFAULT_AMOUNT) : DEFAULT_AMOUNT;
+  const setAmount = (memberId, label, value) => {
+    const num = Math.max(0, parseFloat(value) || 0);
+    setAmounts(a => ({ ...a, [memberId]: { ...(a[memberId] || {}), [label]: num } }));
   };
 
+  const memberTotal = (m) => cotisationLabels.reduce((s, l) => s + ((amounts[m.id] && amounts[m.id][l]) || 0), 0);
+  const labelTotal = (l) => members.reduce((s, m) => s + ((amounts[m.id] && amounts[m.id][l]) || 0), 0);
+  const sessionTotal = () => cotisationLabels.reduce((s, l) => s + labelTotal(l), 0);
+
   const saveCotisation = async (memberId, label) => {
-    const paid = !!(cotis[memberId] && cotis[memberId][label]);
+    const paid = (amounts[memberId] && amounts[memberId][label]) || 0;
+    const amount = getDueAmount(memberId, label);
     const existing = existingCotis.find(c => c.member === memberId && c.label === label);
-    const amount = getAmount(memberId, label);
+    let status = 'pending';
+    if (paid >= amount) status = 'paid';
+    else if (paid > 0 && paid < amount) status = 'overdue';
     if (existing) {
-      const newPaid = paid ? amount : 0;
-      const status = newPaid >= amount ? 'paid' : 'overdue';
-      await api.patch(`/cotisations/${existing.id}/`, { amount_paid: newPaid, status });
+      await api.patch(`/cotisations/${existing.id}/`, { amount_paid: paid, amount, status });
     } else {
-      await api.post('/cotisations/', { member: memberId, label, amount, amount_paid: paid ? amount : 0, status: paid ? 'paid' : 'overdue' });
+      await api.post('/cotisations/', { member: memberId, label, amount, amount_paid: paid, status });
     }
   };
 
@@ -122,7 +124,7 @@ export default function PresenceCotisationSheet({
     if (withPresence && !eventId) { showError('Aucune réunion', 'Veuillez ouvrir une réunion avant d\'enregistrer.'); return; }
     const ok = await confirmAction(
       'Enregistrer présences et cotisations ?',
-      `Les présences et cotisations de ${members.length} membres seront enregistrées pour « ${eventTitle || 'cette réunion'} ».`,
+      `Les présences et cotisations (montants) de ${members.length} membres seront enregistrées pour « ${eventTitle || 'cette réunion'} ».`,
       { icon: 'question', confirmText: 'Oui, enregistrer' }
     );
     if (!ok.isConfirmed) return;
@@ -137,9 +139,10 @@ export default function PresenceCotisationSheet({
             await saveCotisation(m.id, lbl);
           }
         }
+        count += members.length * cotisationLabels.length;
       }
       closeLoading();
-      showSuccess(`Enregistrement terminé (${count} présences)`);
+      showSuccess(`Enregistrement terminé (${count} entrées)`);
     } catch (err) {
       closeLoading();
       showError('Erreur', extractError(err, 'Erreur lors de l\'enregistrement.'));
@@ -147,14 +150,15 @@ export default function PresenceCotisationSheet({
   };
 
   const exportExcel = () => {
-    const header = ['Membre', ...(withPresence ? ['Présence'] : []), ...cotisationLabels.map(l => l), 'Total cotisé'];
+    const header = ['Membre', ...(withPresence ? ['Présence'] : []), ...cotisationLabels.map(l => `${l} (FCFA)`), 'Total cotisé'];
     const lines = members.map(m => {
       const row = [m.full_name];
       if (withPresence) row.push(STATUS_LABELS[presence[m.id]] || '—');
-      cotisationLabels.forEach(l => row.push((cotis[m.id] && cotis[m.id][l]) ? 'OUI' : 'NON'));
-      row.push(memberPaid(m));
+      cotisationLabels.forEach(l => row.push((amounts[m.id] && amounts[m.id][l]) || 0));
+      row.push(memberTotal(m));
       return row;
     });
+    lines.push(['TOTAL SÉANCE', ...(withPresence ? [''] : []), ...cotisationLabels.map(l => labelTotal(l)), sessionTotal()]);
     const csv = '\ufeff' + [header, ...lines].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -167,16 +171,17 @@ export default function PresenceCotisationSheet({
     const w = window.open('', '_blank', 'width=900,height=700');
     const headCells = ['Membre'];
     if (withPresence) headCells.push('Présence');
-    headCells.push(...cotisationLabels.map(l => l));
+    headCells.push(...cotisationLabels.map(l => `${l} (FCFA)`));
     headCells.push('Total cotisé');
     const head = headCells.map(c => `<th>${c}</th>`).join('');
     const rows = members.map(m => {
       let cells = `<td>${m.full_name}</td>`;
       if (withPresence) cells += `<td>${STATUS_LABELS[presence[m.id]] || '—'}</td>`;
-      cotisationLabels.forEach(l => cells += `<td style="text-align:center">${(cotis[m.id] && cotis[m.id][l]) ? '✓' : '✗'}</td>`);
-      cells += `<td>${memberPaid(m)} FCFA</td>`;
+      cotisationLabels.forEach(l => cells += `<td style="text-align:center">${(amounts[m.id] && amounts[m.id][l]) || 0}</td>`);
+      cells += `<td>${memberTotal(m)} FCFA</td>`;
       return `<tr>${cells}</tr>`;
     }).join('');
+    const footerRow = `<tr>${(withPresence ? '<td></td>' : '')}<td><strong>TOTAL SÉANCE</strong></td>` + cotisationLabels.map(l => `<td style="text-align:center"><strong>${labelTotal(l)}</strong></td>`).join('') + `<td><strong>${sessionTotal()} FCFA</strong></td></tr>`;
     w.document.write(`<html><head><title>Présence & Cotisations</title><style>
       body{font-family:Arial;padding:30px}
       h1{color:#1d4ed8} h2{color:#555}
@@ -186,7 +191,7 @@ export default function PresenceCotisationSheet({
     </style></head><body>
       <h1>Feuille de présence & cotisations - Association de Fraternité et d'Entraide</h1>
       <h2>${eventTitle || 'Réunion'} — ${new Date().toLocaleDateString('fr-FR')}</h2>
-      <table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr>${head}</tr></thead><tbody>${rows}${footerRow}</tbody></table>
       <script>setTimeout(()=>window.print(),300)<\/script>
     </body></html>`);
     w.document.close();
@@ -220,7 +225,7 @@ export default function PresenceCotisationSheet({
                   {DEFAULT_MONTHLY_LABEL === l ? <span className="inline-flex items-center gap-1"><ClipboardCheck className="w-3.5 h-3.5" /> {l} *</span> : l}
                 </th>
               ))}
-              <th className="px-4 py-3 font-semibold whitespace-nowrap">Total cotisé</th>
+              <th className="px-4 py-3 font-semibold whitespace-nowrap">Total membre</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-100">
@@ -242,29 +247,43 @@ export default function PresenceCotisationSheet({
                   </td>
                 )}
                 {cotisationLabels.map(l => {
-                  const checked = !!(cotis[m.id] && cotis[m.id][l]);
+                  const due = getDueAmount(m.id, l);
                   return (
-                    <td key={l} className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => toggleCotis(m.id, l)}
-                        disabled={!canEditCotisations}
-                        title={l === DEFAULT_MONTHLY_LABEL ? 'Cotisation mensuelle (obligatoire)' : l}
-                        className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300 text-transparent hover:border-emerald-400'} ${!canEditCotisations ? 'cursor-not-allowed opacity-60' : ''}`}
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
+                    <td key={l} className="px-2 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={amounts[m.id] && amounts[m.id][l] !== undefined ? amounts[m.id][l] : 0}
+                          onChange={e => setAmount(m.id, l, e.target.value)}
+                          disabled={!canEditCotisations}
+                          placeholder="0"
+                          className="w-20 px-2 py-1.5 rounded-lg border border-surface-200 text-sm text-center disabled:opacity-60"
+                        />
+                      </div>
+                      <div className="text-[10px] text-surface-400 mt-0.5">{due.toLocaleString('fr-FR')} F</div>
                     </td>
                   );
                 })}
-                <td className="px-4 py-3 text-emerald-600 font-medium whitespace-nowrap">{memberPaid(m).toLocaleString('fr-FR')} FCFA</td>
+                <td className="px-4 py-3 text-emerald-600 font-medium whitespace-nowrap">{memberTotal(m).toLocaleString('fr-FR')} FCFA</td>
               </tr>
             ))}
           </tbody>
+          <tfoot className="bg-surface-50">
+            <tr>
+              <td className="px-4 py-3 font-bold text-surface-800 sticky left-0 bg-surface-50">TOTAL SÉANCE</td>
+              {withPresence && <td />}
+              {cotisationLabels.map(l => (
+                <td key={l} className="px-4 py-3 text-center font-bold text-primary-600">{labelTotal(l).toLocaleString('fr-FR')}</td>
+              ))}
+              <td className="px-4 py-3 font-bold text-primary-700 whitespace-nowrap">{sessionTotal().toLocaleString('fr-FR')} FCFA</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       {canEditCotisations && (
         <div className="mt-3 bg-surface-50 border border-surface-100 rounded-xl px-4 py-3 text-xs text-surface-500">
-          <strong>* Cotisation mensuelle :</strong> obligatoire pour chaque membre. Cocher pour valider le paiement du mois. Les autres cotisations (fond solidaire, sorties...) sont facultatives.
+          <strong>* Cotisation mensuelle :</strong> obligatoire. Saisissez le montant réellement versé par chaque membre. Une ligne vide vaut 0. Les totaux sont calculés automatiquement par membre, par type de cotisation et pour toute la séance.
         </div>
       )}
     </motion.div>

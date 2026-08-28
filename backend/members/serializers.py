@@ -14,11 +14,13 @@ class MemberSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     email = serializers.CharField(read_only=True)
     role_display = serializers.CharField(source="get_role_display", read_only=True)
+    account_status_display = serializers.CharField(source="get_account_status_display", read_only=True)
 
     class Meta:
         model = Member
         fields = [
             "id", "user", "full_name", "email", "role", "role_display",
+            "account_status", "account_status_display",
             "membership_status", "membership_date", "phone", "photo",
             "bio", "show_in_directory", "joined_date", "is_active_member",
         ]
@@ -96,6 +98,7 @@ class MembershipApplicationSerializer(serializers.ModelSerializer):
         model = MembershipApplication
         fields = [
             "id", "user", "user_name", "user_email",
+            "photo", "id_front", "id_back",
             "demand_letter", "supporting_documents", "motivation",
             "status", "status_display", "reviewed_by", "reviewed_by_name",
             "review_note", "created_at", "updated_at",
@@ -111,6 +114,9 @@ class MembershipApplicationCreateSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=150)
     phone = serializers.CharField(max_length=20, required=False, default="")
     motivation = serializers.CharField(required=False, default="")
+    photo = serializers.ImageField()
+    id_front = serializers.ImageField()
+    id_back = serializers.ImageField()
     demand_letter = serializers.FileField(required=False, allow_null=True)
     supporting_documents = serializers.FileField(required=False, allow_null=True)
     rgpd_consent = serializers.BooleanField()
@@ -146,6 +152,9 @@ class MembershipApplicationCreateSerializer(serializers.Serializer):
         app = MembershipApplication.objects.create(
             user=user,
             motivation=validated_data.get("motivation", ""),
+            photo=validated_data.get("photo"),
+            id_front=validated_data.get("id_front"),
+            id_back=validated_data.get("id_back"),
             demand_letter=validated_data.get("demand_letter"),
             supporting_documents=validated_data.get("supporting_documents"),
         )

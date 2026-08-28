@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, TrendingDown, FileText, BarChart3, Clock, ArrowLeft, LayoutDashboard, HandCoins, ClipboardCheck, Plus } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, FileText, BarChart3, Clock, ArrowLeft, LayoutDashboard, HandCoins, ClipboardCheck, Plus, Scale } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CotisationsManager from './sections/CotisationsManager';
 import PresencesManager from './sections/PresencesManager';
 import TresorierPresenceCotisations from './sections/TresorierPresenceCotisations';
+import EtatGlobal from './sections/EtatGlobal';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
@@ -18,6 +19,7 @@ const sections = [
   { key: 'cotisations', label: 'Cotisations', icon: HandCoins, path: '/espace-tresorier/cotisations' },
   { key: 'presences', label: 'Présences', icon: ClipboardCheck, path: '/espace-tresorier/presences' },
   { key: 'presence-cotisations', label: 'Présence + Cotisations', icon: HandCoins, path: '/espace-tresorier/presence-cotisations' },
+  { key: 'etat-global', label: 'État global', icon: Scale, path: '/espace-tresorier/etat-global' },
 ];
 
 function FinancialEditor({ onAdded }) {
@@ -110,6 +112,7 @@ function TreasurerDashboard() {
             {activeSection.key === 'cotisations' && <CotisationsManager />}
             {activeSection.key === 'presences' && <PresencesManager />}
             {activeSection.key === 'presence-cotisations' && <TresorierPresenceCotisations />}
+            {activeSection.key === 'etat-global' && <EtatGlobal />}
           </div>
         </div>
       </div>

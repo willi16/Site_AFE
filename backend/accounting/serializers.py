@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem
+from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem, Donation, Notification
 
 
 def media_url(obj, field):
@@ -105,3 +105,36 @@ class GalleryItemSerializer(serializers.ModelSerializer):
 
     def get_is_video(self, obj):
         return obj.file_type == "video"
+
+
+class DonationSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = Donation
+        fields = [
+            "id", "donor_name", "donor_phone", "method", "target_number",
+            "amount", "message", "status", "status_display", "created_at",
+        ]
+        read_only_fields = ["status", "created_at"]
+
+
+class DonationCreateSerializer(serializers.Serializer):
+    donor_name = serializers.CharField(max_length=200)
+    donor_phone = serializers.CharField(max_length=20, required=False, default="")
+    method = serializers.CharField(max_length=100, required=False, default="")
+    target_number = serializers.CharField(max_length=50, required=False, default="")
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    message = serializers.CharField(required=False, default="")
+
+    def create(self, validated_data):
+        return Donation.objects.create(status="received", **validated_data)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    recipient_name = serializers.CharField(source="recipient.full_name", read_only=True, default="")
+
+    class Meta:
+        model = Notification
+        fields = ["id", "recipient", "recipient_name", "title", "message", "is_read", "created_at"]
+        read_only_fields = ["recipient", "title", "message", "created_at"]
