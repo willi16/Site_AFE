@@ -140,6 +140,7 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://localhost:3000",
         "https://afe-agdk.com",
         "https://www.afe-agdk.com",
+        "https://site-afe.vercel.app",
     ],
 )
 
