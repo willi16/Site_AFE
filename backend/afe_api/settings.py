@@ -1,4 +1,8 @@
 import environ
+import dj_database_url
+import cloudinary
+import cloudinary.api
+import cloudinary.uploader
 from pathlib import Path
 from datetime import timedelta
 
@@ -26,6 +30,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "drf_spectacular",
+    "cloudinary_storage",
     "events",
     "members",
     "documents",
@@ -34,12 +39,15 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # CORS doit être le plus haut possible (avant CommonMiddleware)
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise : sert les fichiers statiques en production (Render)
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     # Sécurité : en-têtes + limitation de débit
     "afe_api.security.SecurityHeadersMiddleware",
     "afe_api.security.RateLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -67,10 +75,11 @@ TEMPLATES = [
 WSGI_APPLICATION = "afe_api.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default="sqlite:///" + str(BASE_DIR / "db.sqlite3"),
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -88,6 +97,25 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "cloudinary_storage.storage.MediaCloudinaryStorage"
+            if env("CLOUDINARY_CLOUD_NAME", default=None)
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# Cloudinary (stockage des médias en production, FS éphémère sur Render)
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": env("CLOUDINARY_CLOUD_NAME", default=None),
+    "API_KEY": env("CLOUDINARY_API_KEY", default=None),
+    "API_SECRET": env("CLOUDINARY_API_SECRET", default=None),
+}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -95,7 +123,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:5173", "http://localhost:3000"],
+    default=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://afe-agdk.com",
+        "https://www.afe-agdk.com",
+    ],
 )
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
