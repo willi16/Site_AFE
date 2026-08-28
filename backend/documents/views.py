@@ -1,6 +1,15 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
+from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS
 from .models import Document
 from .serializers import DocumentSerializer, DocumentPublicSerializer
+
+
+def _validate_uploaded_file(request):
+    upload = request.FILES.get("file")
+    if upload is not None:
+        validate_upload(ALLOWED_DOCUMENTS)(upload)
 
 
 class IsBureauOrReadOnly(permissions.BasePermission):
@@ -34,4 +43,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return Document.objects.filter(visible_to__in=["public", "members"])
 
     def perform_create(self, serializer):
+        try:
+            _validate_uploaded_file(self.request)
+        except Exception as exc:
+            raise ValidationError(detail=str(exc))
+        serializer.save(uploaded_by=self.request.user)
+
+    def perform_update(self, serializer):
+        try:
+            _validate_uploaded_file(self.request)
+        except Exception as exc:
+            raise ValidationError(detail=str(exc))
         serializer.save(uploaded_by=self.request.user)

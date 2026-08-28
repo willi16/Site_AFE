@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS, ALLOWED_IMAGES, ALLOWED_VIDEOS
 from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem, Donation, Notification
 
 
@@ -19,6 +20,10 @@ def build_absolute(serializer, path):
 class FinancialRecordSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, default="")
     record_type_display = serializers.CharField(source="get_record_type_display", read_only=True)
+    receipt = serializers.FileField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_DOCUMENTS | ALLOWED_IMAGES)],
+    )
 
     class Meta:
         model = FinancialRecord
@@ -32,6 +37,10 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
 
 class MeetingReportSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, default="")
+    file = serializers.FileField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_DOCUMENTS)],
+    )
 
     class Meta:
         model = MeetingReport
@@ -75,8 +84,14 @@ class CotisationSerializer(serializers.ModelSerializer):
 
 
 class GalleryItemSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False, allow_null=True)
-    video = serializers.FileField(required=False, allow_null=True)
+    image = serializers.ImageField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_IMAGES)],
+    )
+    video = serializers.FileField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_VIDEOS)],
+    )
     media_url = serializers.SerializerMethodField()
     is_video = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, default="")

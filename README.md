@@ -22,7 +22,8 @@ touché à l'informatique (un « analphabète du numérique »).
 9. [Les comptes de test](#9-les-comptes-de-test)
 10. [Structure du projet (pour les développeurs)](#10-structure-du-projet-pour-les-développeurs)
 11. [Les branches et GitHub](#11-les-branches-et-github)
-12. [Problèmes fréquents et solutions](#12-problèmes-fréquents-et-solutions)
+12. [La sécurité : comment le site se protège](#12-la-sécurité--comment-le-site-se-protège)
+13. [Problèmes fréquents et solutions](#13-problèmes-fréquents-et-solutions)
 
 ---
 
@@ -336,7 +337,79 @@ Voici le sens des « branches » (des versions différentes du code) :
 
 ---
 
-## 12. Problèmes fréquents et solutions
+## 12. La sécurité : comment le site se protège
+
+Le site a été **renforcé contre les attaques fréquentes** que l'on voit sur Internet.
+Voici, en langage simple, ce qui protège le site et contre quoi.
+
+### a) L'injection SQL (vol de données de la base)
+C'est une technique où un attaquant tente d'affaiblir ou de voler la base de données
+en envoyant des ordres cachés.
+➡️ **Protection** : le projet n'écrit **jamais** de commande SQL à la main. Il utilise
+toujours l'outil sécurisé de Django (l'« ORM ») qui « neutralise » automatiquement les
+commandes malveillantes.
+
+### b) Le XSS (insertion de scripts malveillants dans le site)
+C'est une technique où un attaquant tente d'insérer un petit programme caché dans une
+page pour voler les informations des visiteurs.
+➡️ **Protection** : le site affiche automatiquement les textes de façon « neutre »
+(ils ne peuvent pas être interprétés comme des programmes), et l'upload de fichiers est
+contrôlé pour empêcher les fichiers piégés.
+
+### c) Le DDoS et la surcharge (trop de visiteurs en même temps)
+C'est une attaque où l'on envoie énormément de requêtes d'un coup pour « étouffer »
+le site et le faire tomber.
+➡️ **Protection** :
+- **Limitation de débit** : le site (et le serveur web Nginx) limite le nombre de
+  requêtes par personne et par minute. Si quelqu'un envoie trop de demandes, elles
+  sont bloquées (réponse 429) et le site continue de fonctionner pour les autres.
+- **Limitation des connexions** : le nombre de connexions simultanées par visiteur
+  est plafonné.
+- **Plusieurs ouvriers** : le site est monté avec plusieurs « ouvriers » (workers)
+  qui partagent la charge, pour absorber les pics de fréquentation sans planter.
+
+### d) La défiguration du site (défacement)
+C'est quand un attaquant modifie le contenu visible du site (par exemple remplace la
+page d'accueil).
+➡️ **Protection** : seuls les comptes autorisés (secrétaire, admin) peuvent modifier
+le contenu ; les uploads sont contrôlés ; et le contenu ne peut pas être remplacé par
+des fichiers piégés.
+
+### e) L'exploitation des pièces du site (CMS vulnérable)
+➡️ **Protection** : les « briques » logicielles (Python, Django, React…) sont gardées à
+jour, et les outils inutiles ne sont pas exposés. La « boîte d'administration » Django
+n'est pas accessible au public.
+
+### f) Les téléchargements piégés (drive-by download)
+C'est quand un attaquant force un visiteur à télécharger un fichier dangereux à son insu.
+➡️ **Protection** : les fichiers qu'un visiteur peut **mettre en ligne** sont strictement
+contrôlés (types autorisés uniquement : PDF, images, vidéos courantes…). Les fichiers
+dangereux (`.php`, `.html`, `.exe`, `.js`…) sont **refusés**. Le site ne peut donc pas
+servir de fichier piégé.
+
+### g) Les en-têtes de sécurité
+Le site envoie à chaque page des « consignes de sécurité » au navigateur :
+- `X-Content-Type-Options: nosniff` : empêche le navigateur d'interpréter un fichier
+  comme autre chose que ce qu'il est.
+- `Content-Security-Policy` : interdit au navigateur de charger des contenus venant
+  d'ailleurs ou d'exécuter des scripts non prévus.
+- `X-Frame-Options` : empêche que le site soit « encadré » par un site malveillant.
+- En production (HTTPS), le site force le chiffrement et active le HSTS.
+
+### h) Le vol de mot de passe (bourrage de force brute)
+➡️ **Protection** : les tentatives de connexion sont **limitées**. Après quelques
+échecs, il faut attendre avant de réessayer, ce qui rend le piratage par essais de
+mots de passe **très difficile**.
+
+> 💡 **En résumé** : le site utilise une base de données sécurisée, des en-têtes de
+> sécurité, une validation stricte des fichiers, une limitation de débit, et une
+> configuration de production robuste. Sans oublier les bonnes habitudes : **ne jamais
+> partager les mots de passe**, et **changer les mots de passe des comptes de test**
+> avant la mise en ligne.
+
+---
+
+## 13. Problèmes fréquents et solutions
 
 **« Le frontend ne répond pas »** → Vérifie que `npm run dev` tourne dans un terminal,
 et que tu ouvres **http://localhost:5173**.

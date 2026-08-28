@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS, ALLOWED_IMAGES
 from .models import Member, BureauMember, MembershipApplication, AssociationSettings
 
 
@@ -114,11 +115,20 @@ class MembershipApplicationCreateSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=150)
     phone = serializers.CharField(max_length=20, required=False, default="")
     motivation = serializers.CharField(required=False, default="")
-    photo = serializers.ImageField()
-    id_front = serializers.ImageField()
-    id_back = serializers.ImageField()
-    demand_letter = serializers.FileField(required=False, allow_null=True)
-    supporting_documents = serializers.FileField(required=False, allow_null=True)
+    photo = serializers.ImageField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_IMAGES)],
+    )
+    id_front = serializers.ImageField(validators=[validate_upload(ALLOWED_IMAGES)])
+    id_back = serializers.ImageField(validators=[validate_upload(ALLOWED_IMAGES)])
+    demand_letter = serializers.FileField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_DOCUMENTS)],
+    )
+    supporting_documents = serializers.FileField(
+        required=False, allow_null=True,
+        validators=[validate_upload(ALLOWED_DOCUMENTS)],
+    )
     rgpd_consent = serializers.BooleanField()
 
     def validate_username(self, value):

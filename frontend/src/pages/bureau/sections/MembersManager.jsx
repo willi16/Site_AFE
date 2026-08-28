@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
@@ -219,8 +219,20 @@ export default function MembersManager({ canRegister = true }) {
                 <tr key={m.id} className="hover:bg-surface-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-primary-100 overflow-hidden shrink-0">
-                        {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : <Users className="w-4 h-4 text-primary-400 m-auto" />}
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => canEdit && setEditingPhoto(m.id)}
+                          title={canEdit ? 'Changer la photo' : m.full_name}
+                          className={`w-11 h-11 rounded-full bg-primary-100 overflow-hidden shrink-0 ${canEdit ? 'cursor-pointer' : 'cursor-default'}`}
+                        >
+                          {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : <Users className="w-4 h-4 text-primary-400 m-auto" />}
+                        </button>
+                        {canEdit && (
+                          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary-500 text-white flex items-center justify-center shadow pointer-events-none">
+                            <Camera className="w-3 h-3" />
+                          </span>
+                        )}
                       </div>
                       <div>
                         <div className="font-medium text-surface-800">{m.full_name}</div>

@@ -35,6 +35,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Sécurité : en-têtes + limitation de débit
+    "afe_api.security.SecurityHeadersMiddleware",
+    "afe_api.security.RateLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -96,6 +99,28 @@ CORS_ALLOWED_ORIGINS = env.list(
 )
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
+
+# ---------------------------------------------------------------------------
+# Durcissement de la sécurité
+# ---------------------------------------------------------------------------
+
+# Taille maximale d'un téléversement (10 Mo) et d'un corps de requête (12 Mo)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+# En production (HTTPS), on durcit les cookies et on force le HTTPS
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # Limiter le HSTS pendant le développement local (HTTP)
+else:
+    SECURE_HSTS_SECONDS = 0
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
