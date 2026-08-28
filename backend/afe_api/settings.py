@@ -89,6 +89,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Découplage en 2 groupes de 770 000 itérations pour un meilleur compromis
+# performance/sécurité (Argon2 en tête = mots de passe les plus robustes).
+# Les hashs encore en PBKDF2 sont automatiquement re-hachés en Argon2 dès le
+# prochain login réussi (mécanisme natif de Django).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+]
+
 LANGUAGE_CODE = "fr-fr"
 TIME_ZONE = "Europe/Paris"
 USE_I18N = True
