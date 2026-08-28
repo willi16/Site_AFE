@@ -18,7 +18,7 @@ services:
       - key: DJANGO_ALLOWED_HOSTS
         value: ".onrender.com,afe-agdk.com,www.afe-agdk.com"
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://afe-agdk.com,https://www.afe-agdk.com,http://localhost:5173"
+        value: "https://afe-agdk.com,https://www.afe-agdk.com,https://site-afe.vercel.app,http://localhost:5173"
       - key: DATABASE_URL
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
