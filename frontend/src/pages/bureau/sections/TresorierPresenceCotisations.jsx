@@ -70,6 +70,16 @@ export default function TresorierPresenceCotisations() {
     setSelectedEventMonthly(!!(ev && ev.is_monthly_assembly));
   };
 
+  const selectExisting = (e) => {
+    const id = e.target.value;
+    if (!id) { setSelectedEvent(''); return; }
+    const ev = events.find(x => String(x.id) === String(id));
+    if (!ev) return;
+    setSelectedEvent(String(ev.id));
+    setSelectedEventTitle(ev.title || '');
+    setSelectedEventMonthly(!!ev.is_monthly_assembly);
+  };
+
   if (loading) return <LoadingSpinner className="py-10" />;
 
   return (
@@ -90,15 +100,30 @@ export default function TresorierPresenceCotisations() {
         <button onClick={openMonthly} className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all">
           <CalendarDays className="w-4 h-4" /> Ouvrir l'assemblée du dernier dimanche
         </button>
+        <div className="w-full sm:w-auto flex items-center gap-2">
+          <span className="text-sm text-surface-500">ou</span>
+          <select
+            value={selectedEvent}
+            onChange={selectExisting}
+            className="px-4 py-2.5 rounded-xl border border-surface-200 text-sm"
+          >
+            <option value="">— Sélectionner un événement existant —</option>
+            {events.map(ev => (
+              <option key={ev.id} value={ev.id}>
+                {ev.title}{ev.is_monthly_assembly ? ' (assemblée mensuelle)' : ''} — {(ev.event_date || '').slice(0, 10)}
+              </option>
+            ))}
+          </select>
+        </div>
         <p className="text-xs text-surface-500 w-full mt-1 flex items-center gap-1">
-          <ClipboardCheck className="w-3.5 h-3.5" /> Relevez en une seule feuille : la <strong>présence</strong> et la <strong>cotisation mensuelle</strong> (obligatoire) de chaque membre pour l'assemblée du mois.
+          <ClipboardCheck className="w-3.5 h-3.5" /> Relevez en une seule feuille la présence et les cotisations pour l'événement choisi.
         </p>
       </motion.div>
 
       {!selectedEvent ? (
         <div className="bg-white rounded-2xl border border-surface-100 p-8 text-center text-surface-500">
           <HandCoins className="w-10 h-10 text-surface-300 mx-auto mb-3" />
-          <p>Choisissez un mois puis cliquez sur « Ouvrir l'assemblée du dernier dimanche » pour relever présence et cotisations ensemble.</p>
+          <p>Choisissez un événement : utilisez « Ouvrir l'assemblée du dernier dimanche » pour l'assemblée mensuelle, ou sélectionnez un événement existant dans la liste, puis relevez présence et cotisations.</p>
         </div>
       ) : (
         <PresenceCotisationSheet

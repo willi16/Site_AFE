@@ -29,7 +29,7 @@ function BureauDashboard() {
   const [stats, setStats] = useState({ members: 0, events: 0, documents: 0, gallery: 0 });
   const [loading, setLoading] = useState(true);
 
-  const current = sections.find(s => s.key && location.pathname.endsWith(s.key));
+  const current = sections.find(s => s.key && location.pathname.endsWith('/' + s.key));
   const activeSection = current || sections[0];
 
   useEffect(() => {

@@ -1,6 +1,13 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+
+
+class CotisationPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
 from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem, Donation, Notification
 from .serializers import (
     FinancialRecordSerializer, MeetingReportSerializer,
@@ -104,6 +111,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 class CotisationViewSet(viewsets.ModelViewSet):
     serializer_class = CotisationSerializer
     permission_classes = [IsBureau]
+    pagination_class = CotisationPagination
 
     def get_queryset(self):
         qs = Cotisation.objects.select_related("member__user", "event")
@@ -123,54 +131,118 @@ class CotisationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="etat-global")
     def etat_global(self, request):
-        from django.db.models import Sum, Q
+        from django.db.models import Sum, Q, Value, DecimalField
+        from django.db.models.functions import Coalesce
         from members.models import Member
+        from functools import reduce
+        import operator
+        from datetime import datetime
 
-        # pénalités de retard / absence
         ABSENT_FEE = 500
         EXCUSE_FEE = 200
 
-        members = Member.objects.select_related("user").all()
-        rows = []
+        ASSISTANCE_TYPES = [
+            {"type": "mariage", "label": "Mariage", "amount": 100000, "keywords": ["mariage"]},
+            {"type": "naissance", "label": "Nouvelle naissance", "amount": 50000, "keywords": ["naissance"]},
+            {"type": "hospitalisation", "label": "Hospitalisation (selon le cas du BE)", "amount": 100000, "keywords": ["hospitalisation"]},
+            {"type": "deces", "label": "Décès (père, mère, belle-famille)", "amount": 250000, "keywords": ["décès", "deuil"]},
+            {"type": "liberation", "label": "Libération (membre / femme)", "amount": 50000, "keywords": ["libération"]},
+        ]
+
+        start = request.query_params.get("start_date")
+        end = request.query_params.get("end_date")
         calendar = request.query_params.get("period")
-        for m in members:
-            cotis = m.cotisations.all()
-            if calendar:
-                from datetime import datetime
+
+        def coti_filter():
+            f = {}
+            if start:
+                f["due_date__gte"] = start
+            if end:
+                f["due_date__lte"] = end
+            if calendar and not start and not end:
                 try:
                     month = datetime.strptime(calendar, "%Y-%m")
-                    cotis = cotis.filter(due_date__year=month.year, due_date__month=month.month)
+                    f["due_date__year"] = month.year
+                    f["due_date__month"] = month.month
                 except ValueError:
                     pass
-            total_due = cotis.aggregate(s=Sum("amount"))["s"] or 0
-            total_paid = cotis.aggregate(s=Sum("amount_paid"))["s"] or 0
+            return f
 
-            atts = m.attendances.all()
+        def att_filter():
+            f = {}
+            if start:
+                f["event_date__gte"] = start
+            if end:
+                f["event_date__lte"] = end
+            return f
+
+        members = Member.objects.select_related("user").all()
+        rows = []
+
+        for m in members:
+            cotis = m.cotisations.all().filter(**coti_filter())
+            total_due = cotis.aggregate(s=Coalesce(Sum("amount", output_field=DecimalField()), Value(0), output_field=DecimalField()))["s"]
+            total_paid = cotis.aggregate(s=Coalesce(Sum("amount_paid", output_field=DecimalField()), Value(0), output_field=DecimalField()))["s"]
+
+            atts = m.attendances.all().filter(**att_filter())
+            n_present = atts.filter(status="present").count()
             n_absent = atts.filter(status="absent").count()
             n_excuse = atts.filter(status="excuse").count()
             penalties = n_absent * ABSENT_FEE + n_excuse * EXCUSE_FEE
+            balance = total_due - total_paid
+            if balance <= 0:
+                status_label = "À jour"
+            elif total_paid > 0:
+                status_label = "En retard (partiel)"
+            else:
+                status_label = "Non payé"
 
             rows.append({
                 "member_id": m.id,
                 "full_name": m.full_name,
                 "email": m.email,
                 "role": m.role,
-                "total_due": total_due,
-                "total_paid": total_paid,
-                "balance": total_due - total_paid,
+                "present": n_present,
                 "absences": n_absent,
                 "excuses": n_excuse,
+                "total_due": total_due,
+                "total_paid": total_paid,
+                "balance": balance,
                 "penalties": penalties,
-                "grand_total": (total_due - total_paid) + penalties,
+                "status": status_label,
             })
 
-        rows.sort(key=lambda r: (-r["grand_total"], r["full_name"].lower()))
+        rows.sort(key=lambda r: (-r["absences"], -r["balance"], r["full_name"].lower()))
+
+        all_cotis = Cotisation.objects.all().filter(**coti_filter())
+        assistances = []
+        for a in ASSISTANCE_TYPES:
+            q = reduce(operator.or_, [Q(label__icontains=k) for k in a["keywords"]])
+            matches = all_cotis.filter(q)
+            ev_ids = {c.event_id for c in matches if c.event_id}
+            count = len(ev_ids) + matches.filter(event_id__isnull=True).count()
+            if count:
+                assistances.append({
+                    "type": a["type"],
+                    "label": a["label"],
+                    "amount": a["amount"],
+                    "count": count,
+                    "total": a["amount"] * count,
+                })
+
+        total_disbursed = sum(x["total"] for x in assistances)
+        total_assistances = sum(x["count"] for x in assistances)
+
         totals = {
             "total_due": sum(r["total_due"] for r in rows),
             "total_paid": sum(r["total_paid"] for r in rows),
             "balance": sum(r["balance"] for r in rows),
             "penalties": sum(r["penalties"] for r in rows),
-            "grand_total": sum(r["grand_total"] for r in rows),
+            "total_present": sum(r["present"] for r in rows),
+            "total_absent": sum(r["absences"] for r in rows),
+            "total_excuse": sum(r["excuses"] for r in rows),
+            "total_disbursed": total_disbursed,
+            "total_assistances": total_assistances,
         }
         # Pagination serveur pour la table des membres
         from rest_framework.pagination import PageNumberPagination
@@ -186,6 +258,10 @@ class CotisationViewSet(viewsets.ModelViewSet):
             "members": rows if page is None else page,
             "count": len(rows),
             "totals": totals,
+            "assistances": assistances,
+            "start_date": start,
+            "end_date": end,
+            "period": calendar,
         })
 
 

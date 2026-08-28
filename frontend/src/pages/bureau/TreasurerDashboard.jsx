@@ -69,7 +69,7 @@ function TreasurerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const current = sections.find(s => s.key && location.pathname.endsWith(s.key));
+  const current = sections.find(s => s.key && location.pathname.endsWith('/' + s.key));
   const activeSection = current || sections[0];
 
   const fetchData = async () => {

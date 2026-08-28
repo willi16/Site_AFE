@@ -58,8 +58,8 @@ function BureauOrganigramme() {
   const [bureauMembers, setBureauMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingMember, setEditingMember] = useState(null);
-  const { isBureau, member: currentUser } = useAuth();
-  const editable = isBureau || currentUser?.role === 'admin' || currentUser?.role === 'secretary';
+  const { isBureau, isSecretary } = useAuth();
+  const editable = isBureau || isSecretary;
 
   const loadBureau = () => {
     api.get('/bureau/').then(({ data }) => {
@@ -162,17 +162,19 @@ function BureauOrganigramme() {
   );
 }
 
-function MembersPage() {
+function MembersPage({ onCount }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({ collective_photo: null });
-  const { isBureau, member: currentUser } = useAuth();
-  const canUpload = isBureau || currentUser?.role === 'admin' || currentUser?.role === 'secretary';
+  const { isBureau, isSecretary } = useAuth();
+  const canUpload = isBureau || isSecretary;
 
   const loadData = () => {
     api.get('/members/directory/').then(({ data }) => {
       const list = data.results || data || [];
-      setMembers(list.filter(m => m.role === 'member'));
+      const memberList = list.filter(m => m.role === 'member');
+      setMembers(memberList);
+      if (onCount) onCount(memberList.length);
     }).catch(() => {});
     api.get('/settings/').then(({ data }) => setSettings(data)).catch(() => {});
   };
@@ -180,6 +182,26 @@ function MembersPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleMemberPhoto = async (e, member) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const ok = await confirmAction(
+      'Mettre à jour cette photo ?',
+      `La photo du membre ${member.full_name} sera remplacée.`,
+      { icon: 'question', confirmText: 'Oui, mettre à jour' }
+    );
+    if (!ok.isConfirmed) { e.target.value = ''; return; }
+    const formData = new FormData();
+    formData.append('photo', file);
+    showLoading('Mise à jour de la photo...');
+    try {
+      await api.patch(`/members/${member.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
+      showSuccess('Photo mise à jour');
+      loadData();
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de la mise à jour de la photo.')); }
+  };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -227,24 +249,28 @@ function MembersPage() {
         </div>
       </motion.div>
 
-      {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : (
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {members.map((m) => (
-            <motion.div key={m.id} variants={fadeInUp} className="relative aspect-[3/4] bg-white rounded-2xl border border-surface-100 overflow-hidden group hover:shadow-lg transition-all">
-              {m.photo ? (
-                <img src={m.photo} alt={m.full_name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-primary-50">
-                  <User className="w-16 h-16 text-primary-200" />
-                </div>
-              )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-4">
-                <h3 className="text-sm font-bold text-white">{m.full_name}</h3>
+      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {members.map((m) => (
+          <motion.div key={m.id} variants={fadeInUp} className="relative aspect-[2/3] bg-white rounded-2xl border border-surface-100 overflow-hidden group hover:shadow-lg transition-all">
+            {m.photo ? (
+              <img src={m.photo} alt={m.full_name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-primary-50">
+                <User className="w-16 h-16 text-primary-200" />
               </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+            )}
+            {canUpload && (
+              <label className="absolute top-3 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/90 backdrop-blur shadow cursor-pointer hover:bg-white transition-all" title="Changer la photo du membre">
+                <Upload className="w-4 h-4 text-primary-600" />
+                <input type="file" accept="image/*" onChange={e => handleMemberPhoto(e, m)} className="hidden" />
+              </label>
+            )}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-4">
+              <h3 className="text-sm font-bold text-white">{m.full_name}</h3>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
     </div>
   );
 }
@@ -311,7 +337,7 @@ const pageConfigs = {
     icon: Users,
     title: 'Nos Membres',
     subtitle: "L'Association",
-    description: 'Une communauté de 24 membres actifs et engagés.',
+    description: "Une communauté de membres actifs et engagés.",
     type: 'members',
   },
   documents: {
@@ -448,6 +474,10 @@ function ActualitesPage() {
 function GenericPage({ pageKey }) {
   const config = pageConfigs[pageKey] || pageConfigs.bureau;
   const Icon = config.icon;
+  const [memberCount, setMemberCount] = useState(null);
+  const description = pageKey === 'membres' && memberCount != null
+    ? `Une communauté de ${memberCount} membres actifs et engagés.`
+    : config.description;
 
   return (
     <div className="pt-20">
@@ -457,7 +487,7 @@ function GenericPage({ pageKey }) {
           <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="max-w-2xl">
             <span className="text-accent-400 font-bold text-sm uppercase tracking-widest">{config.subtitle}</span>
             <h1 className="text-4xl md:text-5xl font-bold text-white mt-3 mb-6 font-[var(--font-display)]">{config.title}</h1>
-            <p className="text-lg text-white/70">{config.description}</p>
+            <p className="text-lg text-white/70">{description}</p>
           </motion.div>
         </div>
       </section>
@@ -465,7 +495,7 @@ function GenericPage({ pageKey }) {
       <section className="section-padding">
         <div className="container-custom">
           {config.type === 'organigramme' && <BureauOrganigramme />}
-          {config.type === 'members' && <MembersPage />}
+          {config.type === 'members' && <MembersPage onCount={setMemberCount} />}
           {config.type === 'documents' && <DocumentsPage />}
           {config.type === 'archives' && <PublicGallery />}
           {config.type === 'actualites' && <ActualitesPage />}

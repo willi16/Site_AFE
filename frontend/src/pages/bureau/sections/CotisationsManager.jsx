@@ -1,16 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HandCoins, FileSpreadsheet, FileText } from 'lucide-react';
+import { HandCoins, FileSpreadsheet, FileText, Settings2, ArrowRight } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import Pagination from '../../../components/ui/Pagination';
-import { useAuth } from '../../../context/AuthContext';
-import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
-
-const computeStatus = (paid, amount) => {
-  if (amount > 0 && paid >= amount) return 'paid';
-  if (paid > 0 && paid < amount) return 'overdue';
-  return 'pending';
-};
+import { Link } from 'react-router-dom';
 
 const STATUS_STYLES = {
   paid: 'bg-emerald-100 text-emerald-700',
@@ -19,12 +12,9 @@ const STATUS_STYLES = {
 };
 
 export default function CotisationsManager() {
-  const { isTreasurer, isAdmin } = useAuth();
-  const canEdit = isTreasurer || isAdmin;
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const pageSize = 10;
@@ -40,35 +30,6 @@ export default function CotisationsManager() {
   }, [page]);
 
   useEffect(() => { load(); }, [load]);
-
-  const startEdit = (row, field) => setSelected({ ...row, field });
-
-  const saveEdit = async () => {
-    if (!selected) return;
-    const field = selected.field;
-    const label = field === 'amount' ? 'Montant dû' : 'Montant payé';
-    const memberName = selected.member_name;
-    const ok = await confirmAction(
-      `Modifier le ${field === 'amount' ? 'montant dû' : 'montant payé'} ?`,
-      `« ${memberName || 'Membre'} » — « ${selected.label} » : ${label} = ${selected[field]}.`,
-      { icon: 'question', confirmText: 'Oui, enregistrer' }
-    );
-    if (!ok.isConfirmed) { setSelected(null); return; }
-    const newAmount = Math.max(0, parseFloat(selected.amount) || 0);
-    const newPaid = Math.max(0, parseFloat(selected.amount_paid) || 0);
-    const status = computeStatus(newPaid, newAmount);
-    showLoading('Mise à jour...');
-    try {
-      await api.patch(`/cotisations/${selected.id}/`, { amount: newAmount, amount_paid: newPaid, status });
-      closeLoading();
-      showSuccess('Cotisation mise à jour');
-      setSelected(null);
-      load();
-    } catch (err) {
-      closeLoading();
-      showError('Erreur', extractError(err, 'Impossible de mettre à jour la cotisation.'));
-    }
-  };
 
   const exportExcel = () => {
     const header = ['Membre', 'Libellé', 'Événement', 'Montant dû', 'Payé', 'Solde', 'Statut', 'Date'];
@@ -122,9 +83,12 @@ export default function CotisationsManager() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="text-xl font-bold text-surface-900 flex items-center gap-2">
-          <HandCoins className="w-5 h-5 text-primary-500" /> Cotisations des membres
+          <HandCoins className="w-5 h-5 text-primary-500" /> Liste des cotisations
         </h2>
         <div className="flex gap-2">
+          <Link to="/espace-tresorier/presence-cotisations" className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-all">
+            <Settings2 className="w-4 h-4" /> Configurer présence & cotisations <ArrowRight className="w-4 h-4" />
+          </Link>
           <button onClick={exportExcel} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all">
             <FileSpreadsheet className="w-4 h-4" /> Excel
           </button>
@@ -133,6 +97,11 @@ export default function CotisationsManager() {
           </button>
         </div>
       </div>
+
+      <p className="text-xs text-surface-500 mb-4 flex items-center gap-1">
+        <Settings2 className="w-3.5 h-3.5" />
+        L'événement et le montant à cotiser se configurent dans « <strong>Présence + Cotisations</strong> ». Cette liste est un récapitulatif en lecture seule.
+      </p>
 
       {loading ? <LoadingSpinner className="py-10" /> : (
         <div className="bg-white rounded-2xl border border-surface-100 overflow-hidden">
@@ -155,16 +124,8 @@ export default function CotisationsManager() {
                   <td className="px-4 py-3 font-medium text-surface-800">{r.member_name || r.member}</td>
                   <td className="px-4 py-3 text-surface-600">{r.label}</td>
                   <td className="px-4 py-3 text-surface-600">{r.event_title || '—'}</td>
-                  <td className="px-4 py-3">
-                    {canEdit ? (
-                      <button onClick={() => startEdit(r, 'amount')} className="px-2 py-1 rounded-lg border border-surface-200 hover:border-primary-400" title="Modifier le montant dû">{r.amount}</button>
-                    ) : r.amount}
-                  </td>
-                  <td className="px-4 py-3">
-                    {canEdit ? (
-                      <button onClick={() => startEdit(r, 'amount_paid')} className="px-2 py-1 rounded-lg border border-surface-200 text-emerald-600 hover:border-primary-400" title="Modifier le montant payé">{r.amount_paid}</button>
-                    ) : <span className="text-emerald-600">{r.amount_paid}</span>}
-                  </td>
+                  <td className="px-4 py-3 text-surface-800">{r.amount}</td>
+                  <td className="px-4 py-3 text-surface-800"><span className="text-emerald-600">{r.amount_paid}</span></td>
                   <td className={`px-4 py-3 font-medium ${parseFloat(r.balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{r.balance}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[r.status] || STATUS_STYLES.pending}`}>{r.status_display || r.status}</span>
@@ -174,36 +135,6 @@ export default function CotisationsManager() {
               ))}
             </tbody>
           </table>
-
-          {selected && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-              <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <h3 className="font-bold text-surface-900 mb-4">
-                  Entrer le {selected.field === 'amount' ? 'montant dû' : 'montant payé'} — {selected.label}
-                </h3>
-                <div className="mb-4 text-sm text-surface-500">
-                  Membre : <strong>{selected.member_name || selected.member}</strong>
-                  {selected.field === 'amount' && selected.id && (
-                    <>
-                      {' '}· Payé actuellement : <strong>{selected.amount_paid}</strong>
-                    </>
-                  )}
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  value={selected[selected.field]}
-                  onChange={e => setSelected({ ...selected, [selected.field]: e.target.value })}
-                  autoFocus
-                  className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm mb-5"
-                />
-                <div className="flex gap-2">
-                  <button onClick={saveEdit} className="flex-1 bg-primary-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-600">Enregistrer</button>
-                  <button onClick={() => setSelected(null)} className="px-4 py-2.5 rounded-xl border border-surface-200 text-surface-600 text-sm">Annuler</button>
-                </div>
-              </div>
-            </div>
-          )}
 
           <Pagination page={page} pageSize={pageSize} count={count} onChange={setPage} />
         </div>

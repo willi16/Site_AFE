@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, FileSpreadsheet, FileText, ClipboardCheck, Plus, X } from 'lucide-react';
+import { Save, FileSpreadsheet, FileText, ClipboardCheck, Plus, X, CheckCircle2 } from 'lucide-react';
 import api from '../../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
+import { getRegulationCotisation } from '../../../utils/reglement';
 
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -13,7 +14,7 @@ const STATUS_LABELS = {
 };
 
 const MONTHLY_LABEL = 'Cotisation mensuelle';
-const DEFAULT_AMOUNT = 2500;
+const DEFAULT_AMOUNT = 2000;
 
 export default function PresenceCotisationSheet({
   members,
@@ -28,6 +29,7 @@ export default function PresenceCotisationSheet({
   const [columns, setColumns] = useState([]);
   const [dueAmounts, setDueAmounts] = useState({});
   const [amounts, setAmounts] = useState({});
+  const [newPayments, setNewPayments] = useState({});
   const [existingCotis, setExistingCotis] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,13 +55,14 @@ export default function PresenceCotisationSheet({
       const attMap = {};
       attRows.forEach(r => { attMap[r.member] = r.status; });
       setPresence(prev => ({ ...prev, ...attMap }));
+      setNewPayments({});
 
       if (canEditCotisations) {
         setExistingCotis(cotRows);
         let cols = [];
-        if (isMonthlyAssembly) {
-          const first = cotRows.find(c => c.label === MONTHLY_LABEL);
-          cols = [{ label: MONTHLY_LABEL, amount: first ? parseFloat(first.amount) : DEFAULT_AMOUNT }];
+        const regulation = getRegulationCotisation(eventTitle || '', isMonthlyAssembly);
+        if (regulation) {
+          cols = [{ label: regulation.label, amount: regulation.amount }];
         } else {
           const seen = {};
           cotRows.forEach(c => {
@@ -81,13 +84,16 @@ export default function PresenceCotisationSheet({
         setAmounts(amt);
       }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [members, eventId, withPresence, isMonthlyAssembly, canEditCotisations]);
+  }, [members, eventId, eventTitle, withPresence, isMonthlyAssembly, canEditCotisations]);
 
   const togglePresence = (id, val) => setPresence(p => ({ ...p, [id]: val }));
 
-  const setPaid = (memberId, label, value) => {
-    const num = Math.max(0, parseFloat(value) || 0);
-    setAmounts(a => ({ ...a, [memberId]: { ...(a[memberId] || {}), [label]: num } }));
+  const setNewPayment = (memberId, label, value) => {
+    const due = dueAmounts[label] || 0;
+    const paid = alreadyPaid(memberId, label);
+    const cap = Math.max(0, due - paid);
+    const num = Math.min(cap, Math.max(0, parseFloat(value) || 0));
+    setNewPayments(n => ({ ...n, [memberId]: { ...(n[memberId] || {}), [label]: num } }));
   };
 
   const setDue = (label, value) => {
@@ -108,14 +114,25 @@ export default function PresenceCotisationSheet({
       members.forEach(m => { next[m.id] = { ...(next[m.id] || {}), [label.trim()]: (next[m.id] && next[m.id][label.trim()]) || 0 }; });
       return next;
     });
+    setNewPayments(n => {
+      const next = { ...n };
+      members.forEach(m => { next[m.id] = { ...(next[m.id] || {}), [label.trim()]: 0 }; });
+      return next;
+    });
     setNewLabel('');
     setNewAmount(DEFAULT_AMOUNT);
     setShowAddForm(false);
   };
 
-  const memberTotal = (m) => columns.reduce((s, c) => s + ((amounts[m.id] && amounts[m.id][c.label]) || 0), 0);
-  const labelTotal = (c) => members.reduce((s, m) => s + ((amounts[m.id] && amounts[m.id][c.label]) || 0), 0);
+  const alreadyPaid = (memberId, label) => (amounts[memberId] && amounts[memberId][label]) || 0;
+  const newPayment = (memberId, label) => (newPayments[memberId] && newPayments[memberId][label]) || 0;
+  const remaining = (memberId, label) => Math.max(0, (dueAmounts[label] || 0) - alreadyPaid(memberId, label));
+  const isFullyPaid = (memberId, label) => (dueAmounts[label] || 0) > 0 && alreadyPaid(memberId, label) >= (dueAmounts[label] || 0);
+  const memberTotal = (m) => columns.reduce((s, c) => s + alreadyPaid(m.id, c.label) + newPayment(m.id, c.label), 0);
+  const labelTotal = (c) => members.reduce((s, m) => s + alreadyPaid(m.id, c.label) + newPayment(m.id, c.label), 0);
   const sessionTotal = () => columns.reduce((s, c) => s + labelTotal(c), 0);
+  const regulation = getRegulationCotisation(eventTitle || '', isMonthlyAssembly);
+  const isMonthlyRegulation = !!(regulation && regulation.type === 'mensuelle');
 
   const computeStatus = (paid, amount) => {
     if (paid >= amount && amount > 0) return 'paid';
@@ -124,7 +141,7 @@ export default function PresenceCotisationSheet({
   };
 
   const saveCotisation = async (memberId, label) => {
-    const paid = (amounts[memberId] && amounts[memberId][label]) || 0;
+    const paid = alreadyPaid(memberId, label) + newPayment(memberId, label);
     const amount = dueAmounts[label] || 0;
     const status = computeStatus(paid, amount);
     const existing = existingCotis.find(c => c.member === memberId && c.label === label);
@@ -134,6 +151,22 @@ export default function PresenceCotisationSheet({
     } else {
       await api.post('/cotisations/', { event: eventId, member: memberId, label, ...payload });
     }
+    setAmounts(a => ({ ...a, [memberId]: { ...(a[memberId] || {}), [label]: paid } }));
+    setNewPayments(n => ({ ...n, [memberId]: { ...(n[memberId] || {}), [label]: 0 } }));
+  };
+
+  const saveMonthly = async (memberId, label) => {
+    const amount = dueAmounts[label] || 0;
+    const status = amount > 0 ? 'paid' : 'pending';
+    const existing = existingCotis.find(c => c.member === memberId && c.label === label);
+    const payload = { amount_paid: amount, amount, status };
+    if (existing) {
+      await api.patch(`/cotisations/${existing.id}/`, payload);
+    } else {
+      await api.post('/cotisations/', { event: eventId, member: memberId, label, ...payload });
+    }
+    setAmounts(a => ({ ...a, [memberId]: { ...(a[memberId] || {}), [label]: amount } }));
+    setNewPayments(n => ({ ...n, [memberId]: { ...(n[memberId] || {}), [label]: 0 } }));
   };
 
   const saveAttendance = async () => {
@@ -270,9 +303,9 @@ export default function PresenceCotisationSheet({
                 <th key={c.label} className="px-3 py-3 font-semibold whitespace-nowrap text-center min-w-[130px]">
                   <div className="flex flex-col items-center gap-1">
                     <span className="inline-flex items-center gap-1">
-                      {isMonthlyAssembly ? <ClipboardCheck className="w-3.5 h-3.5" /> : null}{c.label}
+                      {regulation ? <ClipboardCheck className="w-3.5 h-3.5" /> : null}{c.label}
                     </span>
-                    {isMonthlyAssembly && (
+                    {regulation && (
                       <span className="flex items-center gap-1 text-[10px] font-normal text-surface-400">
                         Dû
                         <input
@@ -280,9 +313,9 @@ export default function PresenceCotisationSheet({
                           min="0"
                           value={dueAmounts[c.label] !== undefined ? dueAmounts[c.label] : DEFAULT_AMOUNT}
                           onChange={e => setDue(c.label, e.target.value)}
-                          disabled={!canEditCotisations}
+                          disabled
                           placeholder={String(DEFAULT_AMOUNT)}
-                          className="w-16 px-1.5 py-0.5 rounded-md border border-surface-200 text-xs text-center disabled:opacity-60"
+                          className="w-16 px-1.5 py-0.5 rounded-md border border-surface-200 text-xs text-center bg-surface-100 disabled:opacity-70"
                         />
                       </span>
                     )}
@@ -312,16 +345,44 @@ export default function PresenceCotisationSheet({
                 )}
                 {visibleCotisationColumns.map(c => (
                   <td key={c.label} className="px-2 py-3 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      value={amounts[m.id] && amounts[m.id][c.label] !== undefined ? amounts[m.id][c.label] : 0}
-                      onChange={e => setPaid(m.id, c.label, e.target.value)}
-                      disabled={!canEditCotisations}
-                      placeholder="0"
-                      className="w-20 px-2 py-1.5 rounded-lg border border-surface-200 text-sm text-center disabled:opacity-60"
-                    />
-                    <div className="text-[10px] text-surface-400 mt-0.5">/ {(dueAmounts[c.label] || 0).toLocaleString('fr-FR')} F</div>
+                    {isMonthlyRegulation ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="text-[10px] text-surface-400">Dû : <span className="font-semibold text-surface-600">{(dueAmounts[c.label] || 0).toLocaleString('fr-FR')} F</span></div>
+                        {alreadyPaid(m.id, c.label) >= (dueAmounts[c.label] || 0) && (dueAmounts[c.label] || 0) > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Payé
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => saveMonthly(m.id, c.label)}
+                            disabled={!canEditCotisations}
+                            className="text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-3 py-1.5 transition-all"
+                          >
+                            Marquer payé
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-[10px] text-surface-400 mb-0.5">Déjà payé : <span className="font-semibold text-surface-500">{alreadyPaid(m.id, c.label).toLocaleString('fr-FR')}</span> F</div>
+                        <input
+                          type="number"
+                          min="0"
+                          max={remaining(m.id, c.label)}
+                          value={newPayments[m.id] && newPayments[m.id][c.label] !== undefined ? newPayments[m.id][c.label] : 0}
+                          onChange={e => setNewPayment(m.id, c.label, e.target.value)}
+                          disabled={!canEditCotisations || isFullyPaid(m.id, c.label)}
+                          placeholder="0"
+                          title={isFullyPaid(m.id, c.label) ? 'Cotisation soldée' : 'Nouveau versement de cette séance'}
+                          className={`w-24 px-2 py-1.5 rounded-lg border text-sm text-center transition-colors ${
+                            isFullyPaid(m.id, c.label)
+                              ? 'border-surface-200 bg-surface-100 text-surface-400 cursor-not-allowed'
+                              : 'border-surface-200 disabled:opacity-60'
+                          }`}
+                        />
+                        <div className="text-[10px] text-surface-400 mt-0.5">Dû : {(dueAmounts[c.label] || 0).toLocaleString('fr-FR')} F</div>
+                      </>
+                    )}
                   </td>
                 ))}
                 {visibleCotisationColumns.length ? (
@@ -345,7 +406,7 @@ export default function PresenceCotisationSheet({
         </table>
       </div>
 
-      {canEditCotisations && !isMonthlyAssembly && (
+      {canEditCotisations && !regulation && (
         <div className="mt-3 bg-surface-50 border border-surface-100 rounded-xl p-4">
           {!showAddForm ? (
             <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-all">
@@ -380,7 +441,13 @@ export default function PresenceCotisationSheet({
 
       {canEditCotisations && (
         <div className="mt-3 bg-surface-50 border border-surface-100 rounded-xl px-4 py-3 text-xs text-surface-500">
-          <strong>Cotisation :</strong> le montant « Dû » est décidé par le trésorier. Saisissez par membre le montant réellement versé (les versements multiples s'accumulent dans le même montant payé). Une ligne vide vaut 0.
+          {isMonthlyRegulation ? (
+            <><strong>Cotisation :</strong> cotisation mensuelle du règlement intérieur ({regulation.amount.toLocaleString('fr-FR')} F), payable <strong>en une seule fois</strong> (non payable en tranches). Marquez chaque membre ayant payé via « Marquer payé ».</>
+          ) : regulation ? (
+            <><strong>Cotisation :</strong> le montant « Dû » est fixé par le règlement intérieur ({regulation.amount.toLocaleString('fr-FR')} F pour « {regulation.label} ») et n'est pas modifiable. Le total déjà payé est affiché en lecture seule (traçabilité) ; saisissez dans la case le <strong>nouveau versement</strong> de cette séance, qui s'ajoute au total à l'enregistrement.</>
+          ) : (
+            <><strong>Cotisation :</strong> le montant « Dû » est décidé par le trésorier (événement hors règlement intérieur). Le total déjà payé est affiché en lecture seule (traçabilité) ; saisissez dans la case le <strong>nouveau versement</strong> de cette séance, qui s'ajoute au total à l'enregistrement.</>
+          )}
         </div>
       )}
     </motion.div>
