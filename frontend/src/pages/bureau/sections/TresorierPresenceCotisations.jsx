@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, ClipboardCheck, HandCoins } from 'lucide-react';
 import api from '../../../api/axios';
@@ -21,28 +21,21 @@ export default function TresorierPresenceCotisations() {
   const { isTreasurer, isAdmin } = useAuth();
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([]);
-  const [cotisationLabels, setCotisationLabels] = useState([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedEventTitle, setSelectedEventTitle] = useState('');
+  const [selectedEventMonthly, setSelectedEventMonthly] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    try {
-      const [e, m, c] = await Promise.all([
-        api.get('/events/', { params: { page_size: 50 } }).catch(() => ({ data: { results: [] } })),
-        api.get('/members/directory/').catch(() => ({ data: [] })),
-        api.get('/cotisations/', { params: { page_size: 500 } }).catch(() => ({ data: { results: [] } })),
-      ]);
+  useEffect(() => {
+    Promise.all([
+      api.get('/events/', { params: { page_size: 50 } }).catch(() => ({ data: { results: [] } })),
+      api.get('/members/directory/').catch(() => ({ data: [] })),
+    ]).then(([e, m]) => {
       setEvents(e.data.results || e.data || []);
       setMembers(m.data.results || m.data || []);
-      const rows = c.data.results || c.data || [];
-      setCotisationLabels([...new Set(rows.map(r => r.label))]);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const openMonthly = async () => {
     if (!month) return;
@@ -61,6 +54,7 @@ export default function TresorierPresenceCotisations() {
           location: "Salle de réunion de l'association",
           status: 'upcoming',
           is_published: true,
+          is_monthly_assembly: true,
         });
         closeLoading();
         ev = data;
@@ -73,6 +67,7 @@ export default function TresorierPresenceCotisations() {
     }
     setSelectedEvent(String(ev.id));
     setSelectedEventTitle(`${MONTHLY_TITLE} (${dateStr})`);
+    setSelectedEventMonthly(!!(ev && ev.is_monthly_assembly));
   };
 
   if (loading) return <LoadingSpinner className="py-10" />;
@@ -110,7 +105,7 @@ export default function TresorierPresenceCotisations() {
           members={members}
           eventId={selectedEvent}
           eventTitle={selectedEventTitle || MONTHLY_TITLE}
-          labels={cotisationLabels}
+          isMonthlyAssembly={selectedEventMonthly}
           withPresence
           canEdit
           canEditCotisations={isTreasurer || isAdmin}

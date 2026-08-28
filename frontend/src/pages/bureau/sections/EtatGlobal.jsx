@@ -1,28 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileSpreadsheet, FileText, BarChart3, RefreshCw } from 'lucide-react';
+import { FileSpreadsheet, FileText, BarChart3 } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import Pagination from '../../../components/ui/Pagination';
 import { showError } from '../../../utils/swal';
 
 export default function EtatGlobal() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('');
+  const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  const load = useCallback(async (per = period) => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = per ? { period: per } : {};
+      const params = { period, page, page_size: pageSize };
       const res = await api.get('/cotisations/etat-global/', { params });
       setData(res.data);
-    } catch (e) {
+    } catch {
       showError('Erreur', 'Impossible de charger l\'état global.');
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, page]);
 
-  useEffect(() => { load(''); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const handlePeriodChange = (value) => {
+    setPeriod(value);
+    setPage(1);
+  };
 
   const exportExcel = () => {
     if (!data) return;
@@ -49,7 +57,7 @@ export default function EtatGlobal() {
       th,td{border:1px solid #ccc;padding:6px;text-align:left} th{background:#eef}
     </style></head><body>
       <h1>État global des cotisations</h1>
-      <h2>Association de Fraternité et d'Entraide — ${period ? `Période : ${period}` : 'Toutes périodes'}</h2>
+      <h2>Association de Fraternité et d'Entraide — Période : ${period}</h2>
       <table><thead><tr>${head}</tr></thead><tbody>${rows}${totals}</tbody></table>
       <script>setTimeout(()=>window.print(),300)<\/script>
     </body></html>`);
@@ -66,12 +74,9 @@ export default function EtatGlobal() {
           <input
             type="month"
             value={period}
-            onChange={e => setPeriod(e.target.value)}
+            onChange={e => handlePeriodChange(e.target.value)}
             className="px-3 py-2 rounded-xl border border-surface-200 text-sm"
           />
-          <button onClick={() => load(period)} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all">
-            <RefreshCw className="w-4 h-4" /> Calculer
-          </button>
           <button onClick={exportExcel} className="flex items-center gap-2 bg-emerald-500/10 text-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-500/20 transition-all">
             <FileSpreadsheet className="w-4 h-4" /> Excel
           </button>
@@ -100,7 +105,7 @@ export default function EtatGlobal() {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl border border-surface-100 overflow-auto">
+          <div className="bg-white rounded-2xl border border-surface-100 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-surface-50 text-surface-500 text-left">
                 <tr>
@@ -127,6 +132,7 @@ export default function EtatGlobal() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} pageSize={pageSize} count={data.count} onChange={setPage} />
           </div>
         </div>
       )}

@@ -1,75 +1,87 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { HandCoins, FileSpreadsheet, FileText, Check } from 'lucide-react';
+import { HandCoins, FileSpreadsheet, FileText } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import Pagination from '../../../components/ui/Pagination';
+import { useAuth } from '../../../context/AuthContext';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
-const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
+const computeStatus = (paid, amount) => {
+  if (amount > 0 && paid >= amount) return 'paid';
+  if (paid > 0 && paid < amount) return 'overdue';
+  return 'pending';
+};
+
+const STATUS_STYLES = {
+  paid: 'bg-emerald-100 text-emerald-700',
+  pending: 'bg-gray-100 text-gray-600',
+  overdue: 'bg-amber-100 text-amber-700',
+};
 
 export default function CotisationsManager() {
-  const [members, setMembers] = useState([]);
-  const [cotisations, setCotisations] = useState([]);
-  const [labels, setLabels] = useState([]);
+  const { isTreasurer, isAdmin } = useAuth();
+  const canEdit = isTreasurer || isAdmin;
+  const [rows, setRows] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const pageSize = 10;
+
   const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const [m, c] = await Promise.all([
-        api.get('/members/directory/').catch(() => ({ data: [] })),
-        api.get('/cotisations/', { params: { page_size: 500 } }).catch(() => ({ data: { results: [] } })),
-      ]);
-      setMembers(m.data.results || m.data || []);
-      const rows = c.data.results || c.data || [];
-      setCotisations(rows);
-      const lbls = [...new Set(rows.map(r => r.label))];
-      setLabels(lbls);
+      const { data } = await api.get('/cotisations/', { params: { page, page_size: pageSize } });
+      setRows(data.results || data || []);
+      setCount(data.count ?? 0);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, []);
+  }, [page]);
 
   useEffect(() => { load(); }, [load]);
 
-  // For evolution: group by label, compute paid totals
-  const colStats = labels.map(label => {
-    const rows = cotisations.filter(c => c.label === label);
-    return { label, total: rows.reduce((s, c) => s + parseFloat(c.amount || 0), 0), paid: rows.reduce((s, c) => s + parseFloat(c.amount_paid || 0), 0) };
-  });
+  const startEdit = (row, field) => setSelected({ ...row, field });
 
-  const memberStatus = (memberId, label) => cotisations.find(c => c.member === memberId && c.label === label);
-
-  const togglePaid = async (memberId, label) => {
-    const c = memberStatus(memberId, label);
-    const member = members.find(m => m.id === memberId);
-    const makingPaid = c ? c.amount_paid < c.amount : true;
+  const saveEdit = async () => {
+    if (!selected) return;
+    const field = selected.field;
+    const label = field === 'amount' ? 'Montant dû' : 'Montant payé';
+    const memberName = selected.member_name;
     const ok = await confirmAction(
-      makingPaid ? 'Marquer la cotisation comme payée ?' : 'Marquer la cotisation comme impayée ?',
-      `« ${member?.full_name || 'Membre'} » — cotisation « ${label} » : ${makingPaid ? 'sera considérée comme payée.' : 'sera marquée comme non payée.'}`,
-      { icon: 'question', confirmText: 'Oui, confirmer' }
+      `Modifier le ${field === 'amount' ? 'montant dû' : 'montant payé'} ?`,
+      `« ${memberName || 'Membre'} » — « ${selected.label} » : ${label} = ${selected[field]}.`,
+      { icon: 'question', confirmText: 'Oui, enregistrer' }
     );
-    if (!ok.isConfirmed) return;
-    showLoading('Mise à jour de la cotisation...');
+    if (!ok.isConfirmed) { setSelected(null); return; }
+    const newAmount = Math.max(0, parseFloat(selected.amount) || 0);
+    const newPaid = Math.max(0, parseFloat(selected.amount_paid) || 0);
+    const status = computeStatus(newPaid, newAmount);
+    showLoading('Mise à jour...');
     try {
-      if (c) {
-        const paid = c.amount_paid >= c.amount ? 0 : c.amount;
-        const status = paid >= c.amount ? 'paid' : 'overdue';
-        await api.patch(`/cotisations/${c.id}/`, { amount_paid: paid, status });
-      } else {
-        await api.post('/cotisations/', { member: memberId, label, amount: 2500, amount_paid: 2500, status: 'paid' });
-      }
+      await api.patch(`/cotisations/${selected.id}/`, { amount: newAmount, amount_paid: newPaid, status });
       closeLoading();
       showSuccess('Cotisation mise à jour');
+      setSelected(null);
       load();
-    } catch (err) { closeLoading(); console.error(err); showError('Erreur', extractError(err, 'Impossible de mettre à jour la cotisation.')); }
+    } catch (err) {
+      closeLoading();
+      showError('Erreur', extractError(err, 'Impossible de mettre à jour la cotisation.'));
+    }
   };
 
   const exportExcel = () => {
-    const header = ['Membre', 'Email', ...labels.map(l => l), 'Total payé', 'Solde'];
-    const lines = members.map(m => {
-      const totalPaid = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount_paid || 0), 0);
-      const totalDue = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount || 0), 0);
-      return [m.full_name, m.email, ...labels.map(l => memberStatus(m.id, l)?.status === 'paid' ? 'OUI' : 'NON'), totalPaid, Math.max(0, totalDue - totalPaid)];
-    });
+    const header = ['Membre', 'Libellé', 'Événement', 'Montant dû', 'Payé', 'Solde', 'Statut', 'Date'];
+    const lines = rows.map(r => [
+      r.member_name || r.member,
+      r.label,
+      r.event_title || '—',
+      r.amount,
+      r.amount_paid,
+      (parseFloat(r.amount || 0) - parseFloat(r.amount_paid || 0)).toFixed(2),
+      r.status_display || r.status,
+      (r.due_date || r.created_at)?.slice(0, 10) || '',
+    ]);
     const csv = '\ufeff' + [header, ...lines].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -80,13 +92,17 @@ export default function CotisationsManager() {
 
   const exportPDF = () => {
     const w = window.open('', '_blank', 'width=900,height=700');
-    const rows = members.map(m => {
-      const totalPaid = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount_paid || 0), 0);
-      const totalDue = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount || 0), 0);
-      const cells = labels.map(l => `<td style="text-align:center">${memberStatus(m.id, l)?.status === 'paid' ? '✓' : '✗'}</td>`).join('');
-      return `<tr><td>${m.full_name}</td><td>${m.email}</td>${cells}<td>${totalPaid} FCFA</td><td>${Math.max(0, totalDue - totalPaid)} FCFA</td></tr>`;
-    }).join('');
-    const head = labels.map(l => `<th>${l}</th>`).join('');
+    const head = ['Membre', 'Libellé', 'Événement', 'Montant dû', 'Payé', 'Solde', 'Statut', 'Date'].map(c => `<th>${c}</th>`).join('');
+    const body = rows.map(r => `<tr>
+      <td>${r.member_name || r.member}</td>
+      <td>${r.label}</td>
+      <td>${r.event_title || '—'}</td>
+      <td>${r.amount}</td>
+      <td>${r.amount_paid}</td>
+      <td>${(parseFloat(r.amount || 0) - parseFloat(r.amount_paid || 0)).toFixed(2)}</td>
+      <td>${r.status_display || r.status}</td>
+      <td>${(r.due_date || r.created_at)?.slice(0, 10) || ''}</td>
+    </tr>`).join('');
     w.document.write(`<html><head><title>Cotisations AFE</title><style>
       body{font-family:Arial;padding:30px}
       h1{color:#1d4ed8} h2{color:#555}
@@ -96,7 +112,7 @@ export default function CotisationsManager() {
     </style></head><body>
       <h1>État des cotisations - Association de Fraternité et d'Entraide</h1>
       <h2>Généré le ${new Date().toLocaleDateString('fr-FR')}</h2>
-      <table><thead><tr><th>Membre</th><th>Email</th>${head}<th>Total payé</th><th>Solde</th></tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
       <script>setTimeout(()=>window.print(),300)<\/script>
     </body></html>`);
     w.document.close();
@@ -119,59 +135,78 @@ export default function CotisationsManager() {
       </div>
 
       {loading ? <LoadingSpinner className="py-10" /> : (
-        <>
-          {/* Stats par cotisation */}
-          <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {colStats.map(cs => (
-              <div key={cs.label} className="bg-white rounded-2xl p-5 border border-surface-100">
-                <p className="text-sm text-surface-500 mb-1">{cs.label}</p>
-                <p className="text-lg font-bold text-surface-900">{Math.round(cs.paid / (cs.total || 1) * 100)}% encaissé</p>
-                <p className="text-xs text-surface-400">{cs.paid.toLocaleString('fr-FR')} / {cs.total.toLocaleString('fr-FR')} FCFA</p>
-              </div>
-            ))}
-          </motion.div>
-
-          <div className="bg-white rounded-2xl border border-surface-100 overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-50 text-surface-500 text-left">
-                <tr>
-                  <th className="px-4 py-3 font-semibold sticky left-0 bg-surface-50">Membre</th>
-                  {labels.map(l => <th key={l} className="px-4 py-3 font-semibold whitespace-nowrap">✔ {l}</th>)}
-                  <th className="px-4 py-3 font-semibold">Total payé</th>
-                  <th className="px-4 py-3 font-semibold">Solde</th>
+        <div className="bg-white rounded-2xl border border-surface-100 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-50 text-surface-500 text-left">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Membre</th>
+                <th className="px-4 py-3 font-semibold">Libellé</th>
+                <th className="px-4 py-3 font-semibold">Événement</th>
+                <th className="px-4 py-3 font-semibold">Montant dû</th>
+                <th className="px-4 py-3 font-semibold">Payé</th>
+                <th className="px-4 py-3 font-semibold">Solde</th>
+                <th className="px-4 py-3 font-semibold">Statut</th>
+                <th className="px-4 py-3 font-semibold">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-100">
+              {rows.map(r => (
+                <tr key={r.id} className="hover:bg-surface-50">
+                  <td className="px-4 py-3 font-medium text-surface-800">{r.member_name || r.member}</td>
+                  <td className="px-4 py-3 text-surface-600">{r.label}</td>
+                  <td className="px-4 py-3 text-surface-600">{r.event_title || '—'}</td>
+                  <td className="px-4 py-3">
+                    {canEdit ? (
+                      <button onClick={() => startEdit(r, 'amount')} className="px-2 py-1 rounded-lg border border-surface-200 hover:border-primary-400" title="Modifier le montant dû">{r.amount}</button>
+                    ) : r.amount}
+                  </td>
+                  <td className="px-4 py-3">
+                    {canEdit ? (
+                      <button onClick={() => startEdit(r, 'amount_paid')} className="px-2 py-1 rounded-lg border border-surface-200 text-emerald-600 hover:border-primary-400" title="Modifier le montant payé">{r.amount_paid}</button>
+                    ) : <span className="text-emerald-600">{r.amount_paid}</span>}
+                  </td>
+                  <td className={`px-4 py-3 font-medium ${parseFloat(r.balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{r.balance}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[r.status] || STATUS_STYLES.pending}`}>{r.status_display || r.status}</span>
+                  </td>
+                  <td className="px-4 py-3 text-surface-500">{(r.due_date || r.created_at)?.slice(0, 10) || '—'}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-100">
-                {members.map(m => {
-                  const totalDue = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount || 0), 0);
-                  const totalPaid = labels.reduce((s, l) => s + (memberStatus(m.id, l)?.amount_paid || 0), 0);
-                  return (
-                    <tr key={m.id} className="hover:bg-surface-50">
-                      <td className="px-4 py-2.5 font-medium text-surface-800 sticky left-0 bg-white">{m.full_name}</td>
-                      {labels.map(l => {
-                        const c = memberStatus(m.id, l);
-                        const checked = c?.status === 'paid';
-                        return (
-                          <td key={l} className="px-4 py-2.5 text-center">
-                            <button
-                              onClick={() => togglePaid(m.id, l)}
-                              title={checked ? 'Marquer comme non payée' : 'Marquer comme payée'}
-                              className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300 text-transparent hover:border-emerald-400'}`}
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          </td>
-                        );
-                      })}
-                      <td className="px-4 py-2.5 text-emerald-600 font-medium">{totalPaid.toLocaleString('fr-FR')}</td>
-                      <td className={`px-4 py-2.5 font-medium ${totalDue - totalPaid > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{Math.max(0, totalDue - totalPaid).toLocaleString('fr-FR')}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+
+          {selected && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+              <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <h3 className="font-bold text-surface-900 mb-4">
+                  Entrer le {selected.field === 'amount' ? 'montant dû' : 'montant payé'} — {selected.label}
+                </h3>
+                <div className="mb-4 text-sm text-surface-500">
+                  Membre : <strong>{selected.member_name || selected.member}</strong>
+                  {selected.field === 'amount' && selected.id && (
+                    <>
+                      {' '}· Payé actuellement : <strong>{selected.amount_paid}</strong>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  value={selected[selected.field]}
+                  onChange={e => setSelected({ ...selected, [selected.field]: e.target.value })}
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl border border-surface-200 text-sm mb-5"
+                />
+                <div className="flex gap-2">
+                  <button onClick={saveEdit} className="flex-1 bg-primary-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-600">Enregistrer</button>
+                  <button onClick={() => setSelected(null)} className="px-4 py-2.5 rounded-xl border border-surface-200 text-surface-600 text-sm">Annuler</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Pagination page={page} pageSize={pageSize} count={count} onChange={setPage} />
+        </div>
       )}
     </div>
   );

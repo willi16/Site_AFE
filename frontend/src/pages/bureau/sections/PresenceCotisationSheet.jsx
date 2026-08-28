@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, FileSpreadsheet, FileText, ClipboardCheck } from 'lucide-react';
+import { Save, FileSpreadsheet, FileText, ClipboardCheck, Plus, X } from 'lucide-react';
 import api from '../../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
 
@@ -12,33 +12,28 @@ const STATUS_LABELS = {
   excuse: 'Absent justifié',
 };
 
-const DEFAULT_MONTHLY_LABEL = 'Cotisation mensuelle';
+const MONTHLY_LABEL = 'Cotisation mensuelle';
 const DEFAULT_AMOUNT = 2500;
 
 export default function PresenceCotisationSheet({
   members,
   eventId,
   eventTitle,
-  labels = [],
+  isMonthlyAssembly = false,
   withPresence = true,
   canEdit = true,
-  canEditCotisations = true,
+  canEditCotisations = false,
 }) {
   const [presence, setPresence] = useState({});
+  const [columns, setColumns] = useState([]);
+  const [dueAmounts, setDueAmounts] = useState({});
   const [amounts, setAmounts] = useState({});
   const [existingCotis, setExistingCotis] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // Garantir la cotisation mensuelle en premier (obligatoire)
-  const cotisationLabels = labels.includes(DEFAULT_MONTHLY_LABEL)
-    ? labels
-    : [DEFAULT_MONTHLY_LABEL, ...labels.filter(l => l !== DEFAULT_MONTHLY_LABEL)];
-
-  const getDueAmount = (memberId, label) => {
-    const found = existingCotis.find(c => c.member === memberId && c.label === label);
-    return found ? parseFloat(found.amount || DEFAULT_AMOUNT) : DEFAULT_AMOUNT;
-  };
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newAmount, setNewAmount] = useState(DEFAULT_AMOUNT);
 
   useEffect(() => {
     if (!members.length) return;
@@ -46,85 +41,123 @@ export default function PresenceCotisationSheet({
     const initPresence = {};
     members.forEach(m => { initPresence[m.id] = 'present'; });
     setPresence(initPresence);
-    const tasks = [];
-    if (withPresence && eventId) {
-      tasks.push(api.get('/attendances/', { params: { event: eventId, page_size: 100 } }).then(({ data }) => {
-        const map = {};
-        (data.results || data || []).forEach(r => { map[r.member] = r.status; });
-        setPresence(prev => ({ ...prev, ...map }));
-      }).catch(() => {}));
-    }
-    tasks.push(api.get('/cotisations/', { params: { page_size: 500 } }).then(({ data }) => {
-      const rows = data.results || data || [];
-      setExistingCotis(rows);
-      const amountsMap = {};
-      rows.forEach(r => {
-        if (!amountsMap[r.member]) amountsMap[r.member] = {};
-        amountsMap[r.member][r.label] = parseFloat(r.amount_paid || 0);
-      });
-      setAmounts(prev => {
-        const next = { ...prev };
+
+    const attendanceReq = withPresence && eventId
+      ? api.get('/attendances/', { params: { event: eventId, page_size: 100 } }).then(({ data }) => data.results || data || [])
+      : Promise.resolve([]);
+    const cotisationReq = canEditCotisations && eventId
+      ? api.get('/cotisations/', { params: { event: eventId, page_size: 500 } }).then(({ data }) => data.results || data || [])
+      : Promise.resolve([]);
+
+    Promise.all([attendanceReq, cotisationReq]).then(([attRows, cotRows]) => {
+      const attMap = {};
+      attRows.forEach(r => { attMap[r.member] = r.status; });
+      setPresence(prev => ({ ...prev, ...attMap }));
+
+      if (canEditCotisations) {
+        setExistingCotis(cotRows);
+        let cols = [];
+        if (isMonthlyAssembly) {
+          const first = cotRows.find(c => c.label === MONTHLY_LABEL);
+          cols = [{ label: MONTHLY_LABEL, amount: first ? parseFloat(first.amount) : DEFAULT_AMOUNT }];
+        } else {
+          const seen = {};
+          cotRows.forEach(c => {
+            if (!seen[c.label]) { seen[c.label] = true; cols.push({ label: c.label, amount: parseFloat(c.amount) }); }
+          });
+        }
+        setColumns(cols);
+        const due = {};
+        cols.forEach(c => { due[c.label] = c.amount; });
+        setDueAmounts(due);
+        const amt = {};
         members.forEach(m => {
-          next[m.id] = { ...(next[m.id] || {}) };
-          cotisationLabels.forEach(lbl => {
-            if (next[m.id][lbl] === undefined) next[m.id][lbl] = amountsMap[m.id]?.[lbl] ?? 0;
+          amt[m.id] = {};
+          cols.forEach(c => {
+            const row = cotRows.find(r => r.member === m.id && r.label === c.label);
+            amt[m.id][c.label] = row ? parseFloat(row.amount_paid || 0) : 0;
           });
         });
-        return next;
-      });
-    }).catch(() => {}));
-    Promise.all(tasks).finally(() => setLoading(false));
-  }, [members, eventId, withPresence]);
+        setAmounts(amt);
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [members, eventId, withPresence, isMonthlyAssembly, canEditCotisations]);
 
   const togglePresence = (id, val) => setPresence(p => ({ ...p, [id]: val }));
 
-  const setAmount = (memberId, label, value) => {
+  const setPaid = (memberId, label, value) => {
     const num = Math.max(0, parseFloat(value) || 0);
     setAmounts(a => ({ ...a, [memberId]: { ...(a[memberId] || {}), [label]: num } }));
   };
 
-  const memberTotal = (m) => cotisationLabels.reduce((s, l) => s + ((amounts[m.id] && amounts[m.id][l]) || 0), 0);
-  const labelTotal = (l) => members.reduce((s, m) => s + ((amounts[m.id] && amounts[m.id][l]) || 0), 0);
-  const sessionTotal = () => cotisationLabels.reduce((s, l) => s + labelTotal(l), 0);
+  const setDue = (label, value) => {
+    const num = Math.max(0, parseFloat(value) || 0);
+    setDueAmounts(d => ({ ...d, [label]: num }));
+  };
+
+  const addColumn = (label, amount) => {
+    if (!label.trim()) { showError('Libellé requis', 'Indiquez un libellé pour la cotisation.'); return; }
+    const amountNum = Math.max(0, parseFloat(amount) || 0);
+    setColumns(cols => {
+      if (cols.some(c => c.label === label.trim())) return cols;
+      return [...cols, { label: label.trim(), amount: amountNum }];
+    });
+    setDueAmounts(d => ({ ...d, [label.trim()]: amountNum }));
+    setAmounts(a => {
+      const next = { ...a };
+      members.forEach(m => { next[m.id] = { ...(next[m.id] || {}), [label.trim()]: (next[m.id] && next[m.id][label.trim()]) || 0 }; });
+      return next;
+    });
+    setNewLabel('');
+    setNewAmount(DEFAULT_AMOUNT);
+    setShowAddForm(false);
+  };
+
+  const memberTotal = (m) => columns.reduce((s, c) => s + ((amounts[m.id] && amounts[m.id][c.label]) || 0), 0);
+  const labelTotal = (c) => members.reduce((s, m) => s + ((amounts[m.id] && amounts[m.id][c.label]) || 0), 0);
+  const sessionTotal = () => columns.reduce((s, c) => s + labelTotal(c), 0);
+
+  const computeStatus = (paid, amount) => {
+    if (paid >= amount && amount > 0) return 'paid';
+    if (paid > 0 && paid < amount) return 'overdue';
+    return 'pending';
+  };
 
   const saveCotisation = async (memberId, label) => {
     const paid = (amounts[memberId] && amounts[memberId][label]) || 0;
-    const amount = getDueAmount(memberId, label);
+    const amount = dueAmounts[label] || 0;
+    const status = computeStatus(paid, amount);
     const existing = existingCotis.find(c => c.member === memberId && c.label === label);
-    let status = 'pending';
-    if (paid >= amount) status = 'paid';
-    else if (paid > 0 && paid < amount) status = 'overdue';
+    const payload = { amount_paid: paid, amount, status };
     if (existing) {
-      await api.patch(`/cotisations/${existing.id}/`, { amount_paid: paid, amount, status });
+      await api.patch(`/cotisations/${existing.id}/`, payload);
     } else {
-      await api.post('/cotisations/', { member: memberId, label, amount, amount_paid: paid, status });
+      await api.post('/cotisations/', { event: eventId, member: memberId, label, ...payload });
     }
   };
 
   const saveAttendance = async () => {
     if (!eventId) return;
-    try {
-      const { data } = await api.get('/attendances/', { params: { event: eventId, page_size: 100 } });
-      const rows = data.results || data || [];
-      const existing = {};
-      rows.forEach(r => existing[r.member] = r.id);
-      for (const m of members) {
-        const status = presence[m.id] || 'present';
-        const id = existing[m.id];
-        if (id) await api.patch(`/attendances/${id}/`, { status });
-        else await api.post('/attendances/', { event: eventId, member: m.id, status, event_title: eventTitle || '' });
-      }
-    } catch (err) {
-      throw new Error(extractError(err, 'Erreur lors de l\'enregistrement des présences.'));
+    const { data } = await api.get('/attendances/', { params: { event: eventId, page_size: 100 } });
+    const rows = data.results || data || [];
+    const existing = {};
+    rows.forEach(r => existing[r.member] = r.id);
+    for (const m of members) {
+      const status = presence[m.id] || 'present';
+      const id = existing[m.id];
+      if (id) await api.patch(`/attendances/${id}/`, { status });
+      else await api.post('/attendances/', { event: eventId, member: m.id, status, event_title: eventTitle || '' });
     }
   };
 
   const handleSave = async () => {
-    if (!withPresence && !canEditCotisations) return;
-    if (withPresence && !eventId) { showError('Aucune réunion', 'Veuillez ouvrir une réunion avant d\'enregistrer.'); return; }
+    const canSavePresence = withPresence && canEdit;
+    const canSaveCotis = canEditCotisations;
+    if (!canSavePresence && !canSaveCotis) return;
+    if (canSavePresence && !eventId) { showError('Aucune réunion', 'Veuillez ouvrir une réunion avant d\'enregistrer.'); return; }
     const ok = await confirmAction(
-      'Enregistrer présences et cotisations ?',
-      `Les présences et cotisations (montants) de ${members.length} membres seront enregistrées pour « ${eventTitle || 'cette réunion'} ».`,
+      'Enregistrer ?',
+      `Les données de ${members.length} membres seront enregistrées pour « ${eventTitle || 'cette réunion'} ».`,
       { icon: 'question', confirmText: 'Oui, enregistrer' }
     );
     if (!ok.isConfirmed) return;
@@ -132,14 +165,17 @@ export default function PresenceCotisationSheet({
     showLoading('Enregistrement...');
     let count = 0;
     try {
-      if (withPresence) { await saveAttendance(); count += members.length; }
-      if (canEditCotisations) {
+      if (canSavePresence) {
+        await saveAttendance();
+        count += members.length;
+      }
+      if (canSaveCotis && eventId) {
         for (const m of members) {
-          for (const lbl of cotisationLabels) {
-            await saveCotisation(m.id, lbl);
+          for (const c of columns) {
+            await saveCotisation(m.id, c.label);
           }
         }
-        count += members.length * cotisationLabels.length;
+        count += members.length * columns.length;
       }
       closeLoading();
       showSuccess(`Enregistrement terminé (${count} entrées)`);
@@ -149,16 +185,21 @@ export default function PresenceCotisationSheet({
     } finally { setSaving(false); }
   };
 
+  const visibleCotisationColumns = canEditCotisations ? columns : [];
+  const canSaveAnything = (withPresence && canEdit) || canEditCotisations;
+
   const exportExcel = () => {
-    const header = ['Membre', ...(withPresence ? ['Présence'] : []), ...cotisationLabels.map(l => `${l} (FCFA)`), 'Total cotisé'];
+    const header = ['Membre', ...(withPresence ? ['Présence'] : []), ...visibleCotisationColumns.map(c => `${c.label} (FCFA)`), ...(visibleCotisationColumns.length ? ['Total cotisé'] : [])];
     const lines = members.map(m => {
       const row = [m.full_name];
       if (withPresence) row.push(STATUS_LABELS[presence[m.id]] || '—');
-      cotisationLabels.forEach(l => row.push((amounts[m.id] && amounts[m.id][l]) || 0));
-      row.push(memberTotal(m));
+      visibleCotisationColumns.forEach(c => row.push((amounts[m.id] && amounts[m.id][c.label]) || 0));
+      if (visibleCotisationColumns.length) row.push(memberTotal(m));
       return row;
     });
-    lines.push(['TOTAL SÉANCE', ...(withPresence ? [''] : []), ...cotisationLabels.map(l => labelTotal(l)), sessionTotal()]);
+    if (visibleCotisationColumns.length) {
+      lines.push(['TOTAL SÉANCE', ...(withPresence ? [''] : []), ...visibleCotisationColumns.map(c => labelTotal(c)), sessionTotal()]);
+    }
     const csv = '\ufeff' + [header, ...lines].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -171,17 +212,20 @@ export default function PresenceCotisationSheet({
     const w = window.open('', '_blank', 'width=900,height=700');
     const headCells = ['Membre'];
     if (withPresence) headCells.push('Présence');
-    headCells.push(...cotisationLabels.map(l => `${l} (FCFA)`));
-    headCells.push('Total cotisé');
+    headCells.push(...visibleCotisationColumns.map(c => `${c.label} (FCFA)`));
+    if (visibleCotisationColumns.length) headCells.push('Total cotisé');
     const head = headCells.map(c => `<th>${c}</th>`).join('');
     const rows = members.map(m => {
       let cells = `<td>${m.full_name}</td>`;
       if (withPresence) cells += `<td>${STATUS_LABELS[presence[m.id]] || '—'}</td>`;
-      cotisationLabels.forEach(l => cells += `<td style="text-align:center">${(amounts[m.id] && amounts[m.id][l]) || 0}</td>`);
-      cells += `<td>${memberTotal(m)} FCFA</td>`;
+      visibleCotisationColumns.forEach(c => cells += `<td style="text-align:center">${(amounts[m.id] && amounts[m.id][c.label]) || 0}</td>`);
+      if (visibleCotisationColumns.length) cells += `<td>${memberTotal(m)} FCFA</td>`;
       return `<tr>${cells}</tr>`;
     }).join('');
-    const footerRow = `<tr>${(withPresence ? '<td></td>' : '')}<td><strong>TOTAL SÉANCE</strong></td>` + cotisationLabels.map(l => `<td style="text-align:center"><strong>${labelTotal(l)}</strong></td>`).join('') + `<td><strong>${sessionTotal()} FCFA</strong></td></tr>`;
+    let footerRow = '';
+    if (visibleCotisationColumns.length) {
+      footerRow = `<tr>${(withPresence ? '<td></td>' : '')}<td><strong>TOTAL SÉANCE</strong></td>` + visibleCotisationColumns.map(c => `<td style="text-align:center"><strong>${labelTotal(c)}</strong></td>`).join('') + `<td><strong>${sessionTotal()} FCFA</strong></td></tr>`;
+    }
     w.document.write(`<html><head><title>Présence & Cotisations</title><style>
       body{font-family:Arial;padding:30px}
       h1{color:#1d4ed8} h2{color:#555}
@@ -203,9 +247,11 @@ export default function PresenceCotisationSheet({
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-all">
-          <Save className="w-4 h-4" /> {saving ? 'Enregistrement...' : 'Enregistrer présences + cotisations'}
-        </button>
+        {canSaveAnything && (
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-all">
+            <Save className="w-4 h-4" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        )}
         <button onClick={exportExcel} className="flex items-center gap-2 bg-emerald-500/10 text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-500/20 transition-all">
           <FileSpreadsheet className="w-4 h-4" /> Excel
         </button>
@@ -220,12 +266,30 @@ export default function PresenceCotisationSheet({
             <tr>
               <th className="px-4 py-3 font-semibold sticky left-0 bg-surface-50">Membre</th>
               {withPresence && <th className="px-4 py-3 font-semibold min-w-[150px]">Présence</th>}
-              {cotisationLabels.map(l => (
-                <th key={l} className="px-4 py-3 font-semibold whitespace-nowrap text-center">
-                  {DEFAULT_MONTHLY_LABEL === l ? <span className="inline-flex items-center gap-1"><ClipboardCheck className="w-3.5 h-3.5" /> {l} *</span> : l}
+              {visibleCotisationColumns.map(c => (
+                <th key={c.label} className="px-3 py-3 font-semibold whitespace-nowrap text-center min-w-[130px]">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="inline-flex items-center gap-1">
+                      {isMonthlyAssembly ? <ClipboardCheck className="w-3.5 h-3.5" /> : null}{c.label}
+                    </span>
+                    {isMonthlyAssembly && (
+                      <span className="flex items-center gap-1 text-[10px] font-normal text-surface-400">
+                        Dû
+                        <input
+                          type="number"
+                          min="0"
+                          value={dueAmounts[c.label] !== undefined ? dueAmounts[c.label] : DEFAULT_AMOUNT}
+                          onChange={e => setDue(c.label, e.target.value)}
+                          disabled={!canEditCotisations}
+                          placeholder={String(DEFAULT_AMOUNT)}
+                          className="w-16 px-1.5 py-0.5 rounded-md border border-surface-200 text-xs text-center disabled:opacity-60"
+                        />
+                      </span>
+                    )}
+                  </div>
                 </th>
               ))}
-              <th className="px-4 py-3 font-semibold whitespace-nowrap">Total membre</th>
+              {visibleCotisationColumns.length ? <th className="px-4 py-3 font-semibold whitespace-nowrap">Total membre</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-100">
@@ -246,44 +310,77 @@ export default function PresenceCotisationSheet({
                     </select>
                   </td>
                 )}
-                {cotisationLabels.map(l => {
-                  const due = getDueAmount(m.id, l);
-                  return (
-                    <td key={l} className="px-2 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          value={amounts[m.id] && amounts[m.id][l] !== undefined ? amounts[m.id][l] : 0}
-                          onChange={e => setAmount(m.id, l, e.target.value)}
-                          disabled={!canEditCotisations}
-                          placeholder="0"
-                          className="w-20 px-2 py-1.5 rounded-lg border border-surface-200 text-sm text-center disabled:opacity-60"
-                        />
-                      </div>
-                      <div className="text-[10px] text-surface-400 mt-0.5">{due.toLocaleString('fr-FR')} F</div>
-                    </td>
-                  );
-                })}
-                <td className="px-4 py-3 text-emerald-600 font-medium whitespace-nowrap">{memberTotal(m).toLocaleString('fr-FR')} FCFA</td>
+                {visibleCotisationColumns.map(c => (
+                  <td key={c.label} className="px-2 py-3 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      value={amounts[m.id] && amounts[m.id][c.label] !== undefined ? amounts[m.id][c.label] : 0}
+                      onChange={e => setPaid(m.id, c.label, e.target.value)}
+                      disabled={!canEditCotisations}
+                      placeholder="0"
+                      className="w-20 px-2 py-1.5 rounded-lg border border-surface-200 text-sm text-center disabled:opacity-60"
+                    />
+                    <div className="text-[10px] text-surface-400 mt-0.5">/ {(dueAmounts[c.label] || 0).toLocaleString('fr-FR')} F</div>
+                  </td>
+                ))}
+                {visibleCotisationColumns.length ? (
+                  <td className="px-4 py-3 text-emerald-600 font-medium whitespace-nowrap">{memberTotal(m).toLocaleString('fr-FR')} FCFA</td>
+                ) : null}
               </tr>
             ))}
           </tbody>
-          <tfoot className="bg-surface-50">
-            <tr>
-              <td className="px-4 py-3 font-bold text-surface-800 sticky left-0 bg-surface-50">TOTAL SÉANCE</td>
-              {withPresence && <td />}
-              {cotisationLabels.map(l => (
-                <td key={l} className="px-4 py-3 text-center font-bold text-primary-600">{labelTotal(l).toLocaleString('fr-FR')}</td>
-              ))}
-              <td className="px-4 py-3 font-bold text-primary-700 whitespace-nowrap">{sessionTotal().toLocaleString('fr-FR')} FCFA</td>
-            </tr>
-          </tfoot>
+          {visibleCotisationColumns.length ? (
+            <tfoot className="bg-surface-50">
+              <tr>
+                <td className="px-4 py-3 font-bold text-surface-800 sticky left-0 bg-surface-50">TOTAL SÉANCE</td>
+                {withPresence && <td />}
+                {visibleCotisationColumns.map(c => (
+                  <td key={c.label} className="px-4 py-3 text-center font-bold text-primary-600">{labelTotal(c).toLocaleString('fr-FR')}</td>
+                ))}
+                <td className="px-4 py-3 font-bold text-primary-700 whitespace-nowrap">{sessionTotal().toLocaleString('fr-FR')} FCFA</td>
+              </tr>
+            </tfoot>
+          ) : null}
         </table>
       </div>
+
+      {canEditCotisations && !isMonthlyAssembly && (
+        <div className="mt-3 bg-surface-50 border border-surface-100 rounded-xl p-4">
+          {!showAddForm ? (
+            <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-all">
+              <Plus className="w-4 h-4" /> Ajouter une cotisation
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Libellé (ex: Cotisation annuelle)" className="px-3 py-2 rounded-lg border border-surface-200 text-sm" />
+              <label className="flex items-center gap-1 text-sm text-surface-500">
+                Dû
+                <input type="number" min="0" value={newAmount} onChange={e => setNewAmount(e.target.value)} className="w-24 px-3 py-2 rounded-lg border border-surface-200 text-sm" />
+              </label>
+              <button onClick={() => addColumn(newLabel, newAmount)} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all">
+                <Plus className="w-4 h-4" /> Ajouter
+              </button>
+              <button onClick={() => setShowAddForm(false)} className="flex items-center gap-1 px-3 py-2 rounded-xl border border-surface-200 text-surface-600 text-sm">
+                <X className="w-4 h-4" /> Annuler
+              </button>
+            </div>
+          )}
+          {columns.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {columns.map(c => (
+                <span key={c.label} className="inline-flex items-center gap-1 bg-white border border-surface-200 rounded-full px-3 py-1 text-xs text-surface-600">
+                  {c.label} · {(dueAmounts[c.label] || 0).toLocaleString('fr-FR')} F
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {canEditCotisations && (
         <div className="mt-3 bg-surface-50 border border-surface-100 rounded-xl px-4 py-3 text-xs text-surface-500">
-          <strong>* Cotisation mensuelle :</strong> obligatoire. Saisissez le montant réellement versé par chaque membre. Une ligne vide vaut 0. Les totaux sont calculés automatiquement par membre, par type de cotisation et pour toute la séance.
+          <strong>Cotisation :</strong> le montant « Dû » est décidé par le trésorier. Saisissez par membre le montant réellement versé (les versements multiples s'accumulent dans le même montant payé). Une ligne vide vaut 0.
         </div>
       )}
     </motion.div>

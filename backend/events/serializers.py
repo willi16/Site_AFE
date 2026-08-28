@@ -17,7 +17,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "description", "short_description",
             "event_date", "end_date", "location", "status",
-            "is_published", "images", "created_by_name",
+            "is_published", "is_monthly_assembly", "images", "created_by_name",
             "created_at", "updated_at",
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]
@@ -30,7 +30,7 @@ class EventListSerializer(serializers.ModelSerializer):
         model = Event
         fields = [
             "id", "title", "short_description", "event_date",
-            "end_date", "location", "status", "image_count",
+            "end_date", "location", "status", "is_monthly_assembly", "image_count",
         ]
 
     def get_image_count(self, obj):

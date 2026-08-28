@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ClipboardCheck, Calendar, CalendarDays } from 'lucide-react';
 import api from '../../../api/axios';
@@ -23,9 +23,9 @@ export default function PresencesManager() {
   const [mode, setMode] = useState('event');
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([]);
-  const [cotisationLabels, setCotisationLabels] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedEventTitle, setSelectedEventTitle] = useState('');
+  const [selectedEventMonthly, setSelectedEventMonthly] = useState(false);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +33,9 @@ export default function PresencesManager() {
     Promise.all([
       api.get('/events/', { params: { page_size: 50 } }).catch(() => ({ data: { results: [] } })),
       api.get('/members/directory/').catch(() => ({ data: [] })),
-      api.get('/cotisations/', { params: { page_size: 500 } }).catch(() => ({ data: { results: [] } })),
-    ]).then(([e, m, c]) => {
+    ]).then(([e, m]) => {
       setEvents((e.data.results || e.data || []).filter(ev => ev.status === 'upcoming' || ev.status === 'past'));
       setMembers(m.data.results || m.data || []);
-      const rows = c.data.results || c.data || [];
-      const labels = [...new Set(rows.map(r => r.label))];
-      setCotisationLabels(labels);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -47,6 +43,7 @@ export default function PresencesManager() {
     setSelectedEvent(val);
     const ev = events.find(e => String(e.id) === String(val));
     setSelectedEventTitle(ev ? `${ev.title} (${ev.event_date?.slice(0, 10)})` : '');
+    setSelectedEventMonthly(!!(ev && ev.is_monthly_assembly));
   };
 
   const openMonthly = async () => {
@@ -66,6 +63,7 @@ export default function PresencesManager() {
           location: "Salle de réunion de l'association",
           status: 'upcoming',
           is_published: true,
+          is_monthly_assembly: true,
         });
         closeLoading();
         ev = data;
@@ -111,7 +109,7 @@ export default function PresencesManager() {
             <Calendar className="w-5 h-5 text-surface-400" />
             <select value={selectedEvent} onChange={e => onSelectEvent(e.target.value)} className="flex-1 min-w-[200px] px-4 py-2.5 rounded-xl border border-surface-200 text-sm">
               <option value="">Sélectionner un événement</option>
-              {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date?.slice(0,10)})</option>)}
+              {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date?.slice(0,10)}){ev.is_monthly_assembly ? ' — mensuelle' : ''}</option>)}
             </select>
           </>
         ) : (
@@ -144,7 +142,7 @@ export default function PresencesManager() {
           members={members}
           eventId={selectedEvent}
           eventTitle={selectedEventTitle || (mode === 'monthly' ? MONTHLY_TITLE : '')}
-          labels={cotisationLabels}
+          isMonthlyAssembly={selectedEventMonthly}
           withPresence
           canEdit={canEditPresence}
           canEditCotisations={canEditCotisations}

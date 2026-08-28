@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HandCoins, Bell, CheckCheck, RefreshCw } from 'lucide-react';
+import { HandCoins, Bell, CheckCheck, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { showSuccess } from '../../../utils/swal';
+import Pagination from '../../../components/ui/Pagination';
 
 export default function DonationsManager() {
   const [donations, setDonations] = useState([]);
@@ -10,20 +11,28 @@ export default function DonationsManager() {
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('dons');
+  const [page, setPage] = useState(1);
+  const [count, setCount] = useState(0);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifCount, setNotifCount] = useState(0);
+  const pageSize = 10;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, n] = await Promise.all([
-        api.get('/donations/').catch(() => ({ data: [] })),
-        api.get('/notifications/').catch(() => ({ data: [] })),
+      const [d, n, u] = await Promise.all([
+        api.get('/donations/', { params: { page, page_size: pageSize } }).catch(() => ({ data: { results: [] } })),
+        api.get('/notifications/', { params: { page: notifPage, page_size: pageSize } }).catch(() => ({ data: { results: [] } })),
+        api.get('/notifications/unread/').catch(() => ({ data: { count: 0 } })),
       ]);
-      setDonations(d.data || []);
-      setNotifications(Array.isArray(n.data) ? n.data : n.data.results || []);
-      setUnread(notifications.filter(nn => !nn.is_read).length);
+      setDonations(d.data.results || []);
+      setCount(d.data.count || 0);
+      setNotifications(n.data.results || []);
+      setNotifCount(n.data.count || 0);
+      setUnread(u.data.count || 0);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, []);
+  }, [page, notifPage]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -99,28 +108,34 @@ export default function DonationsManager() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} pageSize={pageSize} count={count} onChange={setPage} />
           </div>
         )
-      ) : notifications.length === 0 ? (
-        <p className="text-surface-500 text-center py-8">Aucune notification.</p>
       ) : (
-        <div className="space-y-3">
-          {notifications.map(n => (
-            <div key={n.id} className={`bg-white rounded-2xl border p-4 ${n.is_read ? 'border-surface-100' : 'border-primary-200 bg-primary-50/30'}`}>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-                  <Bell className="w-4 h-4 text-primary-500" />
+        <>
+          {notifications.length === 0 ? (
+            <p className="text-surface-500 text-center py-8">Aucune notification.</p>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map(n => (
+                <div key={n.id} className={`bg-white rounded-2xl border p-4 ${n.is_read ? 'border-surface-100' : 'border-primary-200 bg-primary-50/30'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                      <Bell className="w-4 h-4 text-primary-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-surface-800 text-sm">{n.title}</div>
+                      <p className="text-sm text-surface-500 mt-1">{n.message}</p>
+                      <div className="text-xs text-surface-400 mt-2">{new Date(n.created_at).toLocaleString('fr-FR')}</div>
+                    </div>
+                    {!n.is_read && <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2" />}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-surface-800 text-sm">{n.title}</div>
-                  <p className="text-sm text-surface-500 mt-1">{n.message}</p>
-                  <div className="text-xs text-surface-400 mt-2">{new Date(n.created_at).toLocaleString('fr-FR')}</div>
-                </div>
-                {!n.is_read && <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2" />}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+          <Pagination page={notifPage} pageSize={pageSize} count={notifCount} onChange={setNotifPage} />
+        </>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ class Event(models.Model):
     location = models.CharField("Lieu", max_length=200, blank=True)
     status = models.CharField("Statut", max_length=20, choices=STATUS_CHOICES, default="upcoming")
     is_published = models.BooleanField("Publié", default=True)
+    is_monthly_assembly = models.BooleanField("Assemblée mensuelle", default=False)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="created_events")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

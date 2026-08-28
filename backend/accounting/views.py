@@ -53,9 +53,23 @@ class MeetingReportViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
 
+class IsBureauOrSecretary(permissions.BasePermission):
+    """Présences gérées par le trésorier, l'admin ET le secrétaire ; les autres membres du bureau consultent uniquement."""
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return (
+            request.user
+            and request.user.is_authenticated
+            and hasattr(request.user, "member_profile")
+            and request.user.member_profile.role in ("admin", "treasurer", "secretary")
+        )
+
+
 class AttendanceViewSet(viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
-    permission_classes = [IsBureau]
+    permission_classes = [IsBureauOrSecretary]
 
     def get_queryset(self):
         qs = Attendance.objects.select_related("member__user", "event")
@@ -96,6 +110,9 @@ class CotisationViewSet(viewsets.ModelViewSet):
         member_id = self.request.query_params.get("member")
         if member_id:
             qs = qs.filter(member_id=member_id)
+        event_id = self.request.query_params.get("event")
+        if event_id:
+            qs = qs.filter(event_id=event_id)
         return qs
 
     def perform_create(self, serializer):
@@ -155,7 +172,21 @@ class CotisationViewSet(viewsets.ModelViewSet):
             "penalties": sum(r["penalties"] for r in rows),
             "grand_total": sum(r["grand_total"] for r in rows),
         }
-        return Response({"members": rows, "totals": totals})
+        # Pagination serveur pour la table des membres
+        from rest_framework.pagination import PageNumberPagination
+
+        class _P(PageNumberPagination):
+            page_size = 10
+            page_size_query_param = "page_size"
+            max_page_size = 100
+
+        paginator = _P()
+        page = paginator.paginate_queryset(rows, request, view=self)
+        return Response({
+            "members": rows if page is None else page,
+            "count": len(rows),
+            "totals": totals,
+        })
 
 
 class GalleryItemViewSet(viewsets.ModelViewSet):
