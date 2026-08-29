@@ -42,6 +42,8 @@ MIDDLEWARE = [
     # CORS doit être le plus haut possible (avant CommonMiddleware)
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Compression gzip des réponses (API) pour des chargements plus rapides
+    "django.middleware.gzip.GZipMiddleware",
     # WhiteNoise : sert les fichiers statiques en production (Render)
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # Sécurité : en-têtes + limitation de débit

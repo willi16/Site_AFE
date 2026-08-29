@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Phone, CreditCard, Shield, Users, ArrowRight, CheckCircle2, Send } from 'lucide-react';
 import api from '../../api/axios';
@@ -8,8 +9,9 @@ const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, t
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
 
 const phoneNumbers = [
-  { name: 'Président', number: '92 07 59 13', role: 'Président de l\'AFE' },
-  { name: 'Secrétaire', number: '91 08 90 82 / 98 15 05 42', role: 'Secrétaire de l\'AFE' },
+  { name: 'Président', number: '92 07 59 13', role: 'Président de l\'AFE', label: 'Président — 92 07 59 13' },
+  { name: 'Secrétaire', number: '91 08 90 82', role: 'Secrétaire de l\'AFE', label: 'Secrétaire — 91 08 90 82' },
+  { name: 'Secrétaire', number: '98 15 05 42', role: 'Secrétaire de l\'AFE', label: 'Secrétaire — 98 15 05 42' },
 ];
 
 const donationMethods = [
@@ -135,7 +137,7 @@ function DonationPage() {
                         className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
                       >
                         {phoneNumbers.map(p => (
-                          <option key={p.number} value={p.number}>{p.role} — {p.number}</option>
+                          <option key={p.number} value={p.number}>{p.label}</option>
                         ))}
                       </select>
                     </div>
@@ -224,9 +226,9 @@ function DonationPage() {
             <p className="text-white/80 max-w-2xl mx-auto mb-8 leading-relaxed">
               Chaque franc CFA contribue à nos actions : soutien aux membres en difficulté, organisation d'événements, projets solidaires et développement de notre communauté.
             </p>
-            <a href="/don" className="inline-flex items-center gap-2 bg-white text-primary-600 px-8 py-3.5 rounded-xl font-bold hover:bg-surface-50 transition-all">
+            <Link to="/don" className="inline-flex items-center gap-2 bg-white text-primary-600 px-8 py-3.5 rounded-xl font-bold hover:bg-surface-50 transition-all">
               Faire un don <ArrowRight className="w-5 h-5" />
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

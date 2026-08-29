@@ -1,22 +1,24 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
-import HomePage from './pages/public/HomePage';
-import AboutPage from './pages/public/AboutPage';
-import EventsPage from './pages/public/EventsPage';
-import ContactPage from './pages/public/ContactPage';
-import LoginPage from './pages/public/LoginPage';
-import AdhesionPage from './pages/public/AdhesionPage';
-import DonationPage from './pages/public/DonationPage';
-import GenericPage from './pages/public/GenericPage';
-import MemberDashboard from './pages/member/MemberDashboard';
-import BureauDashboard from './pages/bureau/BureauDashboard';
-import TreasurerDashboard from './pages/bureau/TreasurerDashboard';
-import SecretaryDashboard from './pages/bureau/SecretaryDashboard';
 import LoadingSpinner from './components/ui/LoadingSpinner';
+
+const HomePage = lazy(() => import('./pages/public/HomePage'));
+const AboutPage = lazy(() => import('./pages/public/AboutPage'));
+const EventsPage = lazy(() => import('./pages/public/EventsPage'));
+const ContactPage = lazy(() => import('./pages/public/ContactPage'));
+const LoginPage = lazy(() => import('./pages/public/LoginPage'));
+const AdhesionPage = lazy(() => import('./pages/public/AdhesionPage'));
+const DonationPage = lazy(() => import('./pages/public/DonationPage'));
+const GenericPage = lazy(() => import('./pages/public/GenericPage'));
+const MemberDashboard = lazy(() => import('./pages/member/MemberDashboard'));
+const BureauDashboard = lazy(() => import('./pages/bureau/BureauDashboard'));
+const TreasurerDashboard = lazy(() => import('./pages/bureau/TreasurerDashboard'));
+const SecretaryDashboard = lazy(() => import('./pages/bureau/SecretaryDashboard'));
 
 function ProtectedRoute({ children, requireBureau = false, requireTreasurer = false, requireSecretary = false }) {
   const { isAuthenticated, isBureau, isTreasurer, isSecretary, loading, getDashboardPath, member } = useAuth();
@@ -40,8 +42,9 @@ function AppContent() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
           <Route path="/association" element={<AboutPage />} />
           <Route path="/association/bureau" element={<GenericPage pageKey="bureau" />} />
           <Route path="/association/membres" element={<GenericPage pageKey="membres" />} />
@@ -81,7 +84,8 @@ function AppContent() {
           <Route path="/espace-tresorier/presence-cotisations" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="/espace-tresorier/etat-global" element={<ProtectedRoute requireTreasurer><TreasurerDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
       <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', padding: '12px', fontSize: '14px' } }} />

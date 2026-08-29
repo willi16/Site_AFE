@@ -7,7 +7,7 @@ services:
     branch: deployment
     rootDir: backend
     buildCommand: ./build.sh
-    startCommand: gunicorn afe_api.wsgi:application
+    startCommand: gunicorn afe_api.wsgi:application --workers 2 --threads 4 --timeout 120
     healthCheckPath: /healthz/
     autoDeploy: true
     envVars:
