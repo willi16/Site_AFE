@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Users, Target, Eye, Handshake, Award, Crown, Star, Sparkles } from 'lucide-react';
+import { Heart, Users, Target, Eye, Handshake, Award, Crown, Star, Sparkles, Upload } from 'lucide-react';
 import api from '../../api/axios';
 import SectionHeader from '../../components/ui/SectionHeader';
+import { useAuth } from '../../context/AuthContext';
+import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -19,18 +21,51 @@ const values = [
 function FoundingMembers() {
   const [founders, setFounders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isBureau, isSecretary } = useAuth();
+  const editable = isBureau || isSecretary;
+  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
+  const loadFounders = () => {
     api.get('/members/founders/').then(({ data }) => {
       setFounders(data.results || data || []);
     }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadFounders();
   }, []);
 
   if (loading) return null;
   if (founders.length === 0) return null;
 
-  const initiator = founders.find(f => f.is_initiator) || founders[0];
-  const others = founders.filter(f => f.id !== initiator.id);
+  const president = founders.find(f => f.is_initiator) || founders[0];
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ok = await confirmAction(
+      'Mettre à jour cette photo ?',
+      `La photo du fondateur ${president.full_name} sera remplacée.`,
+      { icon: 'question', confirmText: 'Oui, mettre à jour' }
+    );
+    if (!ok.isConfirmed) { e.target.value = ''; return; }
+    const formData = new FormData();
+    formData.append('photo', file);
+    showLoading('Mise à jour de la photo...');
+    setUploading(true);
+    try {
+      await api.patch(`/members/${president.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
+      showSuccess('Photo mise à jour');
+      loadFounders();
+    } catch (err) {
+      closeLoading();
+      console.error(err);
+      showError('Échec', extractError(err, 'Erreur lors de la mise à jour de la photo.'));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <section className="section-padding bg-gradient-to-b from-primary-900 to-primary-950 text-white overflow-hidden relative">
@@ -49,15 +84,15 @@ function FoundingMembers() {
           </p>
         </motion.div>
 
-        {/* Initiateur / 1er président mis en avant */}
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="flex justify-center mb-16">
+        {/* Président / Initiateur / Fondateur mis en avant */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="flex justify-center">
           <div className="relative transform hover:-translate-y-1 transition-transform">
             <div className="absolute -inset-1 bg-gradient-to-r from-accent-400 to-accent-600 rounded-[2rem] blur-md opacity-60" aria-hidden />
             <div className="relative bg-white/10 backdrop-blur border border-white/20 rounded-[2rem] p-8 text-center w-72">
-              <div className="relative w-36 h-36 mx-auto mb-5">
+              <div className="relative w-36 h-36 mx-auto mb-5 group">
                 <div className="w-36 h-36 rounded-full overflow-hidden ring-4 ring-accent-400/70 bg-primary-100">
-                  {initiator.photo ? (
-                    <img src={initiator.photo} alt={initiator.full_name} className="w-full h-full object-cover" />
+                  {president.photo ? (
+                    <img src={president.photo} alt={president.full_name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Crown className="w-14 h-14 text-primary-400" /></div>
                   )}
@@ -65,30 +100,21 @@ function FoundingMembers() {
                 <div className="absolute -bottom-1 -right-1 w-11 h-11 rounded-full bg-accent-500 flex items-center justify-center shadow-lg border-4 border-primary-900">
                   <Crown className="w-5 h-5 text-white" />
                 </div>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-bold uppercase tracking-wide mb-3">
-                <Star className="w-3.5 h-3.5" /> {initiator.founder_title || "Initiateur · 1er Président"}
-              </div>
-              <h3 className="text-xl font-bold">{initiator.full_name}</h3>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Autres fondateurs */}
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {others.map((f) => (
-            <motion.div key={f.id} variants={fadeInUp} className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 hover:border-accent-400/40 transition-all">
-              <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/20 mx-auto mb-4 bg-primary-100 group-hover:ring-accent-400/60 transition-all">
-                {f.photo ? (
-                  <img src={f.photo} alt={f.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center"><Users className="w-8 h-8 text-primary-400" /></div>
+                {editable && (
+                  <label className="absolute -top-1 -left-1 w-11 h-11 rounded-full bg-white/90 backdrop-blur shadow-lg border-4 border-primary-900 flex items-center justify-center cursor-pointer hover:bg-white transition-all" title="Modifier la photo">
+                    {uploading
+                      ? <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                      : <Upload className="w-5 h-5 text-primary-600" />}
+                    <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+                  </label>
                 )}
               </div>
-              <h4 className="font-semibold text-white">{f.full_name}</h4>
-              {f.founder_title && <p className="text-xs text-white/60 mt-1">{f.founder_title}</p>}
-            </motion.div>
-          ))}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-bold uppercase tracking-wide mb-3">
+                <Star className="w-3.5 h-3.5" /> {president.founder_title || "Président · Fondateur"}
+              </div>
+              <h3 className="text-xl font-bold">{president.full_name}</h3>
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -96,6 +122,15 @@ function FoundingMembers() {
 }
 
 function AboutPage() {
+  const [memberCount, setMemberCount] = useState(null);
+
+  useEffect(() => {
+    api.get('/members/directory/').then(({ data }) => {
+      const list = data.results || data || [];
+      setMemberCount(list.filter(m => m.role === 'member').length);
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="pt-20">
       {/* Hero */}
@@ -125,7 +160,7 @@ function AboutPage() {
                 Fondée le 25 juillet 2021 lors de notre première assemblée générale, l'Association de Fraternité et d'Entraide est née de la conviction profonde que la solidarité est la clé d'une société plus juste et plus humaine.
               </p>
               <p className="text-surface-500 leading-relaxed mb-4">
-                De modestes débuts avec une poignée de bénévoles engagés, nous avons grandi pour devenir un acteur incontournable de la vie associative locale, regroupant aujourd'hui 24 membres actifs.
+                De modestes débuts avec une poignée de bénévoles engagés, nous avons grandi pour devenir un acteur incontournable de la vie associative locale, regroupant aujourd'hui {memberCount != null ? `${memberCount} membres actifs` : 'des membres actifs'}.
               </p>
               <p className="text-surface-500 leading-relaxed">
                 Au fil des années, nous avons organisé des dizaines d'événements, lancé des projets solidaires et créé un réseau de confiance qui continue de s'étendre chaque jour.

@@ -162,6 +162,7 @@ function AccordionItem({ rule, isOpen, onToggle, index }) {
 }
 
 function AdhesionPage() {
+  const [memberCount, setMemberCount] = useState(null);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -202,6 +203,13 @@ function AdhesionPage() {
       }
     }
   }, [firstName, lastName, username, setValue]);
+
+  useEffect(() => {
+    api.get('/members/directory/').then(({ data }) => {
+      const list = data.results || data || [];
+      setMemberCount(list.filter(m => m.role === 'member').length);
+    }).catch(() => {});
+  }, []);
 
 
   const backStep = () => {
@@ -326,7 +334,7 @@ function AdhesionPage() {
                       </div>
                       {item.amount && (
                         <span className={`text-sm font-bold ${benefit.iconColor} bg-white px-3 py-1 rounded-lg border border-surface-100 shrink-0`}>
-                          {item.amount}
+                          {item.label === 'Membres actifs unis par la fraternité' && memberCount != null ? `${memberCount} membres` : item.amount}
                         </span>
                       )}
                     </div>

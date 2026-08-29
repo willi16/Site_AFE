@@ -87,4 +87,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
             raise Http404("Fichier introuvable.")
         response = FileResponse(open(path, "rb"))
         response["Content-Disposition"] = f'inline; filename="{Path(path).name}"'
+        # Autorise l'affichage du PDF dans une iframe du site public (ex. Vercel)
+        response["X-Frame-Options"] = "ALLOWALL"
         return response

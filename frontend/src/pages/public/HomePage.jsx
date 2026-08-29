@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Heart, Users, Calendar, Award, Shield, Handshake, BookOpen, Camera, Phone } from 'lucide-react';
 import SectionHeader from '../../components/ui/SectionHeader';
 import EventCard from '../../components/ui/EventCard';
+import api from '../../api/axios';
 
 const stats = [
   { icon: Users, value: '24', label: 'Membres actifs' },
@@ -27,6 +29,15 @@ const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, t
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.15 } } };
 
 function HomePage() {
+  const [memberCount, setMemberCount] = useState(null);
+
+  useEffect(() => {
+    api.get('/members/directory/').then(({ data }) => {
+      const list = data.results || data || [];
+      setMemberCount(list.filter(m => m.role === 'member').length);
+    }).catch(() => {});
+  }, []);
+
   return (
     <div>
       {/* Hero */}
@@ -70,7 +81,9 @@ function HomePage() {
             {stats.map((stat, i) => (
               <motion.div key={i} variants={fadeInUp} className="bg-white rounded-2xl shadow-xl p-6 text-center hover:-translate-y-1 transition-transform">
                 <stat.icon className="w-8 h-8 text-accent-500 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-primary-500 mb-1">{stat.value}</div>
+                <div className="text-3xl font-bold text-primary-500 mb-1">
+                  {stat.label === 'Membres actifs' && memberCount != null ? memberCount : stat.value}
+                </div>
                 <div className="text-sm text-surface-500">{stat.label}</div>
               </motion.div>
             ))}
@@ -107,7 +120,7 @@ function HomePage() {
                 Fondée le 25 juillet 2021 lors de notre première assemblée générale, l'AFE est née de la conviction profonde que la solidarité est la clé d'une société plus juste et plus humaine.
               </motion.p>
               <motion.p variants={fadeInUp} className="text-surface-500 leading-relaxed mb-8">
-                Notre mission : promouvoir l'entraide, organiser des événements solidaires et offrir un soutien concret aux personnes qui en ont besoin. Rejoignez-nous et participez à cette belle aventure collective. Aujourd'hui, l'AFE compte 24 membres actifs.
+                Notre mission : promouvoir l'entraide, organiser des événements solidaires et offrir un soutien concret aux personnes qui en ont besoin. Rejoignez-nous et participez à cette belle aventure collective. Aujourd'hui, l'AFE compte {memberCount != null ? `${memberCount} membres actifs` : 'des membres actifs'}.
               </motion.p>
               <motion.div variants={fadeInUp} className="flex flex-wrap gap-3">
                 {[
