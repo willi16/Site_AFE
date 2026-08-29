@@ -230,27 +230,33 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Actualités: {Actualite.objects.count()}"))
 
     def _seed_documents(self):
+        from django.conf import settings
+        seed_docs_dir = os.path.join(settings.BASE_DIR, "seed", "documents", "2026", "08")
         docs = [
-            {"title": "Statuts de l'AFE", "category": "legal", "visible_to": "public", "file": "STATUTS DE AFE DEF.pdf"},
-            {"title": "Règlement Intérieur", "category": "legal", "visible_to": "public", "file": "RÈGLEMENT INTÉRIEUR  AFE DEF.pdf"},
+            {"file": "statuts.pdf", "title": "Statuts de l'AFE", "category": "legal", "visible_to": "public"},
+            {"file": "reglement-interieur.pdf", "title": "Règlement Intérieur", "category": "legal", "visible_to": "public"},
+            {"file": "rapport_2025.pdf", "title": "Rapport d'activités 2025", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Janvier_2026.pdf", "title": "Rapport de Janvier 2026", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Février_2026.pdf", "title": "Rapport de Février 2026", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Mars_2026.pdf", "title": "Rapport de Mars 2026", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Avril_2026.pdf", "title": "Rapport d'Avril 2026", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Mai_2026.pdf", "title": "Rapport de Mai 2026", "category": "report", "visible_to": "members"},
+            {"file": "rapport_Juin_2026.pdf", "title": "Rapport de Juin 2026", "category": "report", "visible_to": "members"},
         ]
+        admin = User.objects.get(username="admin")
+        Document.objects.all().delete()
+        created = 0
         for d in docs:
-            if Document.objects.filter(title=d["title"]).exists():
-                continue
-            doc = Document.objects.create(uploaded_by=User.objects.get(username="admin"), title=d["title"], category=d["category"], visible_to=d["visible_to"], description="")
-            src = os.path.join(DOC_DIR, d["file"])
+            rel = "documents/2026/08/" + d["file"]
+            doc = Document.objects.create(uploaded_by=admin, title=d["title"], category=d["category"], visible_to=d["visible_to"], description="")
+            src = os.path.join(seed_docs_dir, d["file"])
             if os.path.exists(src):
                 with open(src, "rb") as f:
-                    doc.file.save(os.path.basename(src), File(f), save=True)
-        self.stdout.write(self.style.SUCCESS("Statuts + Règlement attachés"))
-        # Fallback in case DOC_DIR missing
-        for d in docs:
-            doc = Document.objects.filter(title=d["title"]).first()
-            if doc and not doc.file:
-                src = os.path.join(DOC_DIR, d["file"])
-                if os.path.exists(src):
-                    with open(src, "rb") as f:
-                        doc.file.save(os.path.basename(src), File(f), save=True)
+                    doc.file.save(d["file"], File(f), save=False)
+                    doc.file.name = rel
+                    doc.save(update_fields=["file"])
+                created += 1
+        self.stdout.write(self.style.SUCCESS(f"Documents: {Document.objects.count()} (créés: {created})"))
 
     def _seed_gallery(self, admin):
         now = timezone.now()
@@ -300,39 +306,6 @@ class Command(BaseCommand):
                 visible_to="members",
                 created_by=admin,
             )
-        for i, mname in enumerate(reversed(month_names)):
-            title = f"Rapport d'activité {mname} {now.year}"
-            doc = Document.objects.filter(title=title).first()
-            if not doc:
-                doc = Document.objects.create(
-                    title=title,
-                    description=f"Rapport d'activité du mois de {mname} {now.year}. Réalisations, indicateurs et perspectives.",
-                    category="report",
-                    visible_to="members",
-                    uploaded_by=admin,
-                )
-            if doc and not doc.file:
-                body = [
-                    f"RAPPORT D'ACTIVITÉ - {mname.upper()} {now.year}",
-                    "",
-                    f"Rapport d'activité de l'association pour le mois de {mname} {now.year}.",
-                    "",
-                    "1. Activités menées",
-                    f"   - Réunion du bureau du {mname} {now.year}",
-                    "   - Organisation d'événements associatifs",
-                    "   - Accueil et suivi de nouveaux adhérents",
-                    "",
-                    "2. Indicateurs",
-                    f"   - Adhérents actifs en {mname} {now.year}: {Member.objects.filter(role='member').count()}",
-                    "   - Événements planifiés: 3",
-                    "   - Taux de recouvrement des cotisations: 85%",
-                    "",
-                    "3. Perspectives",
-                    "   - Consolider la trésorerie de l'association",
-                    "   - Développer les partenariats locaux",
-                    "   - Organiser l'assemblée générale",
-                ]
-                doc.file.save(f"rapport_{mname}_{now.year}.pdf", make_pdf(title, body, now.year), save=True)
             title_min = f"PV AG {mname} {now.year}"
             if not MeetingReport.objects.filter(title=title_min).exists():
                 MeetingReport.objects.create(

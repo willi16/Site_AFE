@@ -15,3 +15,6 @@ python manage.py migrate
 # pour les images/vidéos lorsque c'est configuré, stockage local pour les
 # documents PDF). S'exécute à chaque déploiement.
 python manage.py seed_media
+
+# (Re)création du jeu de données complet : documents, membres, fondateurs, ...
+python manage.py seed_data
