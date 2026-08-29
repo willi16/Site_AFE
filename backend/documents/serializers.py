@@ -41,11 +41,12 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 
 class DocumentPublicSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
     file = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
-        fields = ["id", "title", "description", "file", "category", "created_at"]
+        fields = ["id", "title", "description", "file", "category", "category_display", "created_at"]
         read_only_fields = ["created_at"]
 
     def get_file(self, obj):

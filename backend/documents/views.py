@@ -59,7 +59,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
-            return Document.objects.filter(visible_to="public")
+            return Document.objects.all()
         if hasattr(user, "member_profile") and user.member_profile.role in ("bureau", "admin", "secretary"):
             return Document.objects.all()
         return Document.objects.filter(visible_to__in=["public", "members"])
