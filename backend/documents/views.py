@@ -1,9 +1,31 @@
+from django.http import FileResponse, Http404
+from django.conf import settings
+from django.core.files.storage import default_storage
+from pathlib import Path
+
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS
 from .models import Document
 from .serializers import DocumentSerializer, DocumentPublicSerializer
+
+
+def _resolve_document_path(doc):
+    """Retourne le chemin réel du fichier d'un document.
+
+    On privilégie le dossier seed/ (versionné dans git, donc toujours présent
+    sur Render) puis le MEDIA_ROOT (pour les documents uploadés)."""
+    rel = doc.file.name
+    if not rel:
+        return None
+    seed_file = Path(settings.BASE_DIR) / "seed" / rel
+    if seed_file.exists():
+        return str(seed_file)
+    if default_storage.exists(rel):
+        return default_storage.path(rel)
+    return None
 
 
 def _validate_uploaded_file(request):
@@ -55,3 +77,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         except Exception as exc:
             raise ValidationError(detail=str(exc))
         serializer.save(uploaded_by=self.request.user)
+
+    @action(detail=True, methods=["get"], url_path="serve")
+    def serve(self, request, pk=None):
+        """Diffuse le fichier d'un document (visionnage / téléchargement)."""
+        doc = self.get_object()
+        path = _resolve_document_path(doc)
+        if not path:
+            raise Http404("Fichier introuvable.")
+        response = FileResponse(open(path, "rb"))
+        response["Content-Disposition"] = f'inline; filename="{Path(path).name}"'
+        return response

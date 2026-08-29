@@ -12,6 +12,7 @@ from .serializers import (
     MemberSerializer, MemberPublicSerializer, MemberRegisterSerializer,
     BureauMemberSerializer, MembershipApplicationSerializer,
     MembershipApplicationCreateSerializer, AssociationSettingsSerializer,
+    generate_username,
 )
 
 
@@ -71,6 +72,14 @@ class MemberViewSet(viewsets.ModelViewSet):
         serializer = MemberPublicSerializer(members, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def founders(self, request):
+        members = Member.objects.filter(is_founder=True).order_by(
+            "-is_initiator", "joined_date"
+        )
+        serializer = MemberPublicSerializer(members, many=True)
+        return Response(serializer.data)
+
     @action(detail=False, methods=["post"], url_path="register")
     def register(self, request):
         serializer = MemberRegisterSerializer(data=request.data)
@@ -110,14 +119,14 @@ class MemberViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="staff-create")
     def staff_create(self, request):
         data = request.data
-        username = data.get("username")
+        username = data.get("username") or ""
         password = data.get("password") or User.objects.make_random_password()
         email = data.get("email", "")
         first_name = data.get("first_name", "")
         last_name = data.get("last_name", "")
         role = data.get("role", "member")
         if not username:
-            return Response({"detail": "username requis"}, status=status.HTTP_400_BAD_REQUEST)
+            username = generate_username(first_name, last_name, email)
         if User.objects.filter(username=username).exists():
             return Response({"username": ["Utilisateur déjà existant."]}, status=status.HTTP_400_BAD_REQUEST)
         user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name, last_name=last_name)

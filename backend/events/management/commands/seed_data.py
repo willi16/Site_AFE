@@ -91,6 +91,7 @@ class Command(BaseCommand):
         self._seed_accounts()
         admin = User.objects.get(username="admin")
         self._seed_members()
+        self._seed_founders()
         self._seed_events(admin)
         self._seed_actualites(admin)
         self._seed_documents()
@@ -152,6 +153,24 @@ class Command(BaseCommand):
                 bio=f"Membre actif de l'AFE."
             )
         self.stdout.write(self.style.SUCCESS(f"Membres fictifs: {len(members_data)} créés"))
+
+    def _seed_founders(self):
+        president = Member.objects.filter(user__username="bureau", role="bureau").first()
+        if president:
+            president.is_founder = True
+            president.founder_title = "Présidente fondatrice"
+            president.is_initiator = True
+            president.save(update_fields=["is_founder", "founder_title", "is_initiator", "photo"])
+        founder_names = ["Awa Camara", "Salam Traoré", "Fatou Ndiaye", "Ibrahima Sow"]
+        titles = ["Trésorière fondatrice", "Secrétaire fondatrice", "Membre fondateur", "Membre fondateur"]
+        for name, title in zip(founder_names, titles):
+            fn, ln = name.split(" ", 1)
+            m = Member.objects.filter(user__first_name=fn, user__last_name=ln).first()
+            if m:
+                m.is_founder = True
+                m.founder_title = title
+                m.save(update_fields=["is_founder", "founder_title"])
+        self.stdout.write(self.style.SUCCESS("Membres fondateurs marqués"))
 
     def _seed_events(self, admin):
         now = timezone.now()

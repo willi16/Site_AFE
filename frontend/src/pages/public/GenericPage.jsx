@@ -278,6 +278,7 @@ function MembersPage({ onCount }) {
 function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState(null);
 
   useEffect(() => {
     api.get('/documents/').then(({ data }) => {
@@ -286,7 +287,7 @@ function DocumentsPage() {
   }, []);
 
   const openDoc = (doc) => {
-    window.open(doc.file, '_blank', 'noopener,noreferrer');
+    setPreview(doc);
   };
 
   return (
@@ -307,7 +308,7 @@ function DocumentsPage() {
               {doc.file && (
                 <div className="flex items-center gap-2">
                   <button onClick={() => openDoc(doc)} className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-xs font-semibold hover:bg-primary-100 transition-all">
-                    <Eye className="w-3.5 h-3.5" /> Voir
+                    <Eye className="w-3.5 h-3.5" /> Visionner
                   </button>
                   <a href={doc.file} target="_blank" rel="noopener noreferrer" download className="flex items-center gap-1.5 px-3 py-2 bg-surface-50 text-surface-600 rounded-lg text-xs font-semibold hover:bg-surface-100 transition-all">
                     <Download className="w-3.5 h-3.5" /> Télécharger
@@ -320,6 +321,28 @@ function DocumentsPage() {
             <div className="text-center py-10 text-surface-400">Aucun document disponible.</div>
           )}
         </motion.div>
+      )}
+
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
+              <div>
+                <h3 className="font-bold text-surface-900">{preview.title}</h3>
+                <p className="text-xs text-surface-400">{preview.category_display}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={preview.file} target="_blank" rel="noopener noreferrer" download className="flex items-center gap-1.5 px-3 py-2 bg-primary-500 text-white rounded-lg text-xs font-semibold hover:bg-primary-600">
+                  <Download className="w-3.5 h-3.5" /> Télécharger
+                </a>
+                <button onClick={() => setPreview(null)} className="p-2 bg-surface-50 rounded-lg text-surface-600 hover:bg-surface-100"><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-surface-50 p-4">
+              <iframe src={preview.file} title={preview.title} className="w-full h-[70vh] rounded-xl border border-surface-200 bg-white" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

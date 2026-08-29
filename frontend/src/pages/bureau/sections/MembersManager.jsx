@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
+import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera, Crown } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
@@ -18,6 +18,8 @@ export default function MembersManager({ canRegister = true }) {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(null);
+  const [founderModal, setFounderModal] = useState(null);
+  const [founderForm, setFounderForm] = useState({ is_founder: false, founder_title: '', is_initiator: false });
   const [form, setForm] = useState({ username: '', first_name: '', last_name: '', email: '', password: '', phone: '', role: 'member' });
   const [roleFilter, setRoleFilter] = useState('all');
 
@@ -86,6 +88,35 @@ export default function MembersManager({ canRegister = true }) {
       setEditingPhoto(null);
       load();
     } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de l\'upload de la photo.')); }
+  };
+
+  const openFounder = (m) => {
+    setFounderForm({
+      is_founder: !!m.is_founder,
+      founder_title: m.founder_title || '',
+      is_initiator: !!m.is_initiator,
+    });
+    setFounderModal(m);
+  };
+
+  const handleFounderSave = async () => {
+    if (!founderModal) return;
+    if (founderForm.is_founder && !founderForm.founder_title.trim() && !founderForm.is_initiator) {
+      showError('Titre requis', 'Indiquez un titre (ex. : Président fondateur) pour ce membre fondateur.');
+      return;
+    }
+    showLoading('Enregistrement...');
+    try {
+      await api.patch(`/members/${founderModal.id}/`, {
+        is_founder: founderForm.is_founder,
+        founder_title: founderForm.is_founder ? founderForm.founder_title : '',
+        is_initiator: founderForm.is_founder && founderForm.is_initiator,
+      });
+      closeLoading();
+      showSuccess('Membre fondateur mis à jour');
+      setFounderModal(null);
+      load();
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de l\'enregistrement.')); }
   };
 
   const handleStatus = async (m, action, verb) => {
@@ -263,6 +294,7 @@ export default function MembersManager({ canRegister = true }) {
                         <button onClick={() => handleStatus(m, 'deactivate', 'Désactiver')} title="Désactiver" className="p-2 rounded-lg hover:bg-orange-50 text-orange-500"><UserX className="w-4 h-4" /></button>
                       )}
                       {canEdit && <button onClick={() => setEditingPhoto(m.id)} title="Changer la photo" className="p-2 rounded-lg hover:bg-surface-100 text-surface-500"><Upload className="w-4 h-4" /></button>}
+                      {canEdit && <button onClick={() => openFounder(m)} title="Membre fondateur" className={`p-2 rounded-lg hover:bg-amber-50 ${m.is_founder ? 'text-amber-500' : 'text-surface-400'}`}><Crown className="w-4 h-4" /></button>}
                       {canEdit && <button onClick={() => handleDelete(m)} title="Supprimer" className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   </td>
@@ -293,6 +325,41 @@ export default function MembersManager({ canRegister = true }) {
               <Upload className="w-4 h-4" /> Choisir une photo
               <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
             </label>
+          </div>
+        </div>
+      )}
+
+      {founderModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setFounderModal(null)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold text-surface-900 flex items-center gap-2"><Crown className="w-5 h-5 text-amber-500" /> Membre fondateur</h3>
+              <button onClick={() => setFounderModal(null)} className="text-surface-400 hover:text-surface-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-surface-500 mb-5">{founderModal.full_name}</p>
+
+            <label className="flex items-center gap-3 mb-4 cursor-pointer">
+              <input type="checkbox" checked={founderForm.is_founder} onChange={e => setFounderForm({ ...founderForm, is_founder: e.target.checked, is_initiator: e.target.checked ? founderForm.is_initiator : false })} className="w-5 h-5 rounded border-surface-300 text-primary-500 accent-primary-500" />
+              <span className="text-sm font-semibold text-surface-700">Ce membre est un fondateur</span>
+            </label>
+
+            {founderForm.is_founder && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-surface-700 mb-1.5">Titre</label>
+                  <input value={founderForm.founder_title} onChange={e => setFounderForm({ ...founderForm, founder_title: e.target.value })} placeholder="Ex. : Président fondateur, Initiateur..." className="input" />
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={founderForm.is_initiator} onChange={e => setFounderForm({ ...founderForm, is_initiator: e.target.checked })} className="w-5 h-5 rounded border-surface-300 accent-accent-500" />
+                  <span className="text-sm font-semibold text-surface-700">Initiateur & 1er président</span>
+                </label>
+              </motion.div>
+            )}
+
+            <div className="flex gap-2">
+              <button onClick={handleFounderSave} className="flex-1 bg-primary-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-primary-600">Enregistrer</button>
+              <button type="button" onClick={() => setFounderModal(null)} className="px-4 py-2.5 rounded-xl border border-surface-200 text-surface-600">Annuler</button>
+            </div>
           </div>
         </div>
       )}

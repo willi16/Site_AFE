@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Users, Target, Eye, Handshake, Award, BookOpen } from 'lucide-react';
+import { Heart, Users, Target, Eye, Handshake, Award, Crown, Star, Sparkles } from 'lucide-react';
+import api from '../../api/axios';
 import SectionHeader from '../../components/ui/SectionHeader';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
@@ -13,6 +15,85 @@ const values = [
   { icon: Eye, title: 'Transparence', description: "Nous croyons en une gestion transparente et responsable, rendant compte de nos actions à l'ensemble des membres." },
   { icon: Award, title: 'Excellence', description: "Nous visons l'excellence dans chacune de nos actions pour maximiser notre impact positif sur la communauté." },
 ];
+
+function FoundingMembers() {
+  const [founders, setFounders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/members/founders/').then(({ data }) => {
+      setFounders(data.results || data || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return null;
+  if (founders.length === 0) return null;
+
+  const initiator = founders.find(f => f.is_initiator) || founders[0];
+  const others = founders.filter(f => f.id !== initiator.id);
+
+  return (
+    <section className="section-padding bg-gradient-to-b from-primary-900 to-primary-950 text-white overflow-hidden relative">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-72 h-72 bg-accent-500 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-72 h-72 bg-primary-500 rounded-full blur-3xl" />
+      </div>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="text-center mb-14">
+          <span className="inline-flex items-center gap-2 text-accent-400 font-bold text-sm uppercase tracking-widest">
+            <Sparkles className="w-4 h-4" /> Héritage
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-4 font-[var(--font-display)]">Nos Membres Fondateurs</h2>
+          <p className="text-white/70 max-w-2xl mx-auto">
+            Les bâtisseurs qui ont porté l'association à bras-le-corps dès ses origines.
+          </p>
+        </motion.div>
+
+        {/* Initiateur / 1er président mis en avant */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="flex justify-center mb-16">
+          <div className="relative transform hover:-translate-y-1 transition-transform">
+            <div className="absolute -inset-1 bg-gradient-to-r from-accent-400 to-accent-600 rounded-[2rem] blur-md opacity-60" aria-hidden />
+            <div className="relative bg-white/10 backdrop-blur border border-white/20 rounded-[2rem] p-8 text-center w-72">
+              <div className="relative w-36 h-36 mx-auto mb-5">
+                <div className="w-36 h-36 rounded-full overflow-hidden ring-4 ring-accent-400/70 bg-primary-100">
+                  {initiator.photo ? (
+                    <img src={initiator.photo} alt={initiator.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Crown className="w-14 h-14 text-primary-400" /></div>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-11 h-11 rounded-full bg-accent-500 flex items-center justify-center shadow-lg border-4 border-primary-900">
+                  <Crown className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-500/20 text-accent-300 text-xs font-bold uppercase tracking-wide mb-3">
+                <Star className="w-3.5 h-3.5" /> {initiator.founder_title || "Initiateur · 1er Président"}
+              </div>
+              <h3 className="text-xl font-bold">{initiator.full_name}</h3>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Autres fondateurs */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          {others.map((f) => (
+            <motion.div key={f.id} variants={fadeInUp} className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 hover:border-accent-400/40 transition-all">
+              <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/20 mx-auto mb-4 bg-primary-100 group-hover:ring-accent-400/60 transition-all">
+                {f.photo ? (
+                  <img src={f.photo} alt={f.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"><Users className="w-8 h-8 text-primary-400" /></div>
+                )}
+              </div>
+              <h4 className="font-semibold text-white">{f.full_name}</h4>
+              {f.founder_title && <p className="text-xs text-white/60 mt-1">{f.founder_title}</p>}
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
 
 function AboutPage() {
   return (
@@ -63,6 +144,9 @@ function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* Membres Fondateurs */}
+      <FoundingMembers />
 
       {/* Mission & Vision */}
       <section className="section-padding bg-surface-50">

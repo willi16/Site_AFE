@@ -5,19 +5,20 @@ from .models import Document
 def media_url(obj, request=None):
     """Retourne l'URL d'accès au fichier d'un document.
 
-    - Les fichiers stockés localement (backend/Render) renvoient un chemin
-      relatif (ex. `/media/documents/...`) ; on le rend absolu pour que le
-      frontend (hébergé séparément) puisse le télécharger.
-    - Les fichiers déjà absolus (Cloudinary) sont renvoyés tels quels.
+    - Les fichiers absolus (Cloudinary) sont renvoyés tels quels.
+    - Les fichiers stockés localement renvoient l'URL de service du backend
+      (`/api/documents/<id>/serve/`), qui diffuse le fichier depuis le dossier
+      seed/ (versionné) ou depuis MEDIA_ROOT, de façon fiable sur Render.
     """
     if not obj.file:
         return None
     url = obj.file.url
     if url.startswith(("http://", "https://")):
         return url
+    serve_path = f"/api/documents/{obj.id}/serve/"
     if request is not None:
-        return request.build_absolute_uri(url)
-    return url
+        return request.build_absolute_uri(serve_path)
+    return serve_path
 
 
 class DocumentSerializer(serializers.ModelSerializer):

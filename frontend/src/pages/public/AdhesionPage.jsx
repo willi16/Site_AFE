@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -182,7 +182,27 @@ function AdhesionPage() {
   const passportPhotoRef = useRef(null);
   const idFrontRef = useRef(null);
   const idBackRef = useRef(null);
-  const { register, handleSubmit, trigger, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema) });
+  const { register, handleSubmit, trigger, watch, setValue, formState: { errors } } = useForm({ resolver: zodResolver(registerSchema), defaultValues: { username: '' } });
+
+  const [firstName, lastName, username] = watch(['first_name', 'last_name', 'username']);
+  const usernameEdited = useRef(false);
+  const lastSuggested = useRef('');
+
+  useEffect(() => {
+    if (usernameEdited.current) return;
+    const strip = (s) => (s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const fn = strip(firstName).replace(/[^a-z0-9]+/g, '.');
+    const ln = strip(lastName).replace(/[^a-z0-9]+/g, '.');
+    const base = [fn, ln].filter(Boolean).join('.');
+    if (fn && ln) {
+      const suggested = base.replace(/^\.+|\.+$/g, '');
+      if (!username || username === lastSuggested.current) {
+        lastSuggested.current = suggested;
+        setValue('username', suggested, { shouldValidate: false });
+      }
+    }
+  }, [firstName, lastName, username, setValue]);
+
 
   const backStep = () => {
     setError('');
@@ -511,10 +531,22 @@ function AdhesionPage() {
                       </div>
                       <div className="mb-4">
                         <label className="block text-sm font-semibold text-surface-700 mb-1.5">Nom d'utilisateur *</label>
-                        <input
-                          {...register('username')}
-                          className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
-                        />
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              {...register('username')}
+                              onChange={(e) => { usernameEdited.current = true; register('username').onChange(e); }}
+                              placeholder="generé automatiquement à partir de votre nom"
+                              className="w-full px-4 py-3 rounded-xl border border-surface-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-sm"
+                            />
+                          </div>
+                          {username && (
+                            <button type="button" onClick={() => { usernameEdited.current = false; lastSuggested.current = ''; }} className="px-3 py-2.5 rounded-xl bg-surface-50 text-primary-600 text-xs font-semibold hover:bg-primary-50 border border-surface-100 whitespace-nowrap" title="Régénérer automatiquement">
+                              Auto
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-surface-400 mt-1.5">Généré automatiquement à partir de votre prénom et nom (prenom.nom). Vous pouvez le modifier.</p>
                         {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>}
                       </div>
                       <div className="mb-4">

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { showError, showSuccess } from '../../utils/swal';
 
@@ -71,10 +71,13 @@ function LoginPage() {
               {loading ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
             <p className="text-sm text-surface-500">
               Pas encore membre ? <Link to="/adhesion" className="text-accent-500 font-semibold hover:underline">S'inscrire</Link>
             </p>
+            <a href="/identifiants.txt" download className="inline-flex items-center gap-2 text-xs text-surface-400 hover:text-primary-600 font-medium transition-colors">
+              <Download className="w-4 h-4" /> Télécharger les identifiants de connexion (admin, bureau, secrétaire, trésorier...)
+            </a>
           </div>
         </div>
       </motion.div>

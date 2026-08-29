@@ -33,6 +33,13 @@ class Member(models.Model):
     joined_date = models.DateField("Date de joining", auto_now_add=True)
     is_active_member = models.BooleanField("Membre actif", default=True)
 
+    is_founder = models.BooleanField("Membre fondateur", default=False)
+    founder_title = models.CharField(
+        "Titre de fondateur", max_length=120, blank=True,
+        help_text="Ex. : Président fondateur, Initiateur, Membre fondateur...",
+    )
+    is_initiator = models.BooleanField("Initiateur / 1er président", default=False)
+
     class Meta:
         verbose_name = "Membre"
         verbose_name_plural = "Membres"
