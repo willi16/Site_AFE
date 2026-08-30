@@ -41,3 +41,16 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export async function fetchFileUrl(url) {
+  try {
+    const { data } = await api.get(url, { responseType: 'blob' });
+    return URL.createObjectURL(data);
+  } catch (error) {
+    return url;
+  }
+}
+
+export function revokeFileUrl(url) {
+  if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+}

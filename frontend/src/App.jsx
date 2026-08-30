@@ -16,6 +16,9 @@ const AdhesionPage = lazy(() => import('./pages/public/AdhesionPage'));
 const DonationPage = lazy(() => import('./pages/public/DonationPage'));
 const GenericPage = lazy(() => import('./pages/public/GenericPage'));
 const MemberDashboard = lazy(() => import('./pages/member/MemberDashboard'));
+const MemberDocuments = lazy(() => import('./pages/member/MemberDocuments'));
+const MemberAnnuaire = lazy(() => import('./pages/member/MemberAnnuaire'));
+const MemberMediatheque = lazy(() => import('./pages/member/MemberMediatheque'));
 const BureauDashboard = lazy(() => import('./pages/bureau/BureauDashboard'));
 const TreasurerDashboard = lazy(() => import('./pages/bureau/TreasurerDashboard'));
 const SecretaryDashboard = lazy(() => import('./pages/bureau/SecretaryDashboard'));
@@ -57,9 +60,9 @@ function AppContent() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/espace-membre" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
-          <Route path="/espace-membre/documents" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
-          <Route path="/espace-membre/annuaire" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
-          <Route path="/espace-membre/mediatheque" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
+          <Route path="/espace-membre/documents" element={<ProtectedRoute><MemberDocuments /></ProtectedRoute>} />
+          <Route path="/espace-membre/annuaire" element={<ProtectedRoute><MemberAnnuaire /></ProtectedRoute>} />
+          <Route path="/espace-membre/mediatheque" element={<ProtectedRoute><MemberMediatheque /></ProtectedRoute>} />
           <Route path="/espace-bureau" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/membres" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />
           <Route path="/espace-bureau/evenements" element={<ProtectedRoute requireBureau><BureauDashboard /></ProtectedRoute>} />

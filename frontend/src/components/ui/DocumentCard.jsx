@@ -1,12 +1,27 @@
 import { FileText, Download, Lock, Eye } from 'lucide-react';
+import { fetchFileUrl, revokeFileUrl } from '../../api/axios';
 
-function DocumentCard({ document: doc, showDownload = false }) {
+function DocumentCard({ document: doc, showDownload = false, onView }) {
   const categoryColors = {
     report: 'bg-blue-50 text-blue-600',
     financial: 'bg-green-50 text-green-600',
     legal: 'bg-purple-50 text-purple-600',
     minutes: 'bg-orange-50 text-orange-600',
     other: 'bg-surface-50 text-surface-600',
+  };
+
+  const downloadDoc = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!doc.file) return;
+    const url = await fetchFileUrl(doc.file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.title}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => revokeFileUrl(url), 2000);
   };
 
   return (
@@ -26,10 +41,19 @@ function DocumentCard({ document: doc, showDownload = false }) {
           </span>
         </div>
       </div>
-      {showDownload && doc.file && (
-        <a href={doc.file} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary-100 text-surface-400 hover:text-primary-500 transition-all">
-          <Download className="w-5 h-5" />
-        </a>
+      {doc.file && (
+        <div className="flex items-center gap-1 shrink-0">
+          {onView && (
+            <button onClick={onView} className="p-2 rounded-lg hover:bg-primary-100 text-primary-500 transition-all" title="Visionner">
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+          {showDownload && (
+            <button onClick={downloadDoc} className="p-2 rounded-lg hover:bg-primary-100 text-surface-400 hover:text-primary-500 transition-all" title="Télécharger">
+              <Download className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

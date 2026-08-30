@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Upload, X, Download, Trash2, Eye } from 'lucide-react';
 import api from '../../../api/axios';
+import { fetchFileUrl, revokeFileUrl } from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
 import { confirmAction, confirmDelete, showSuccess, showError, showLoading, closeLoading, extractError } from '../../../utils/swal';
@@ -33,6 +34,23 @@ export default function DocumentsManager() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const viewDoc = async (d) => {
+    const url = await fetchFileUrl(d.file);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => revokeFileUrl(url), 60000);
+  };
+
+  const downloadDoc = async (d) => {
+    const url = await fetchFileUrl(d.file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${d.title}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => revokeFileUrl(url), 2000);
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -124,12 +142,12 @@ export default function DocumentsManager() {
                   <p className="font-semibold text-surface-900 text-sm">{d.title}</p>
                   <p className="text-xs text-surface-400">
                     {d.category_display || d.category} · {d.visible_to_display || d.visible_to}
-                    {d.file && <a href={d.file} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary-500 hover:underline">· voir</a>}
+                    {d.file && <button onClick={() => viewDoc(d)} className="ml-2 text-primary-500 hover:underline">· voir</button>}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {d.file && <a href={d.file} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg text-primary-600 hover:bg-primary-50"><Download className="w-4 h-4" /></a>}
+                {d.file && <button onClick={() => downloadDoc(d)} className="p-2 rounded-lg text-primary-600 hover:bg-primary-50"><Download className="w-4 h-4" /></button>}
                 {canEdit && <button onClick={() => handleDelete(d)} className="p-2 rounded-lg text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>}
               </div>
             </div>
