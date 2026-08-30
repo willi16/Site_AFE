@@ -86,6 +86,10 @@ class Command(BaseCommand):
         admin = self._ensure_user("admin", "admin@afe-association.org", "45bNOKr&wTqdsC3I24", is_superuser=True)
         if not Member.objects.filter(user=admin).exists():
             Member.objects.create(user=admin, role="admin", rgpd_consent=True, membership_status=True)
+        admin_m = Member.objects.filter(user=admin).first()
+        if admin_m:
+            admin_m.show_in_directory = False
+            admin_m.save(update_fields=["show_in_directory"])
             self.stdout.write(self.style.SUCCESS("Admin créé: admin / 45bNOKr&wTqdsC3I24"))
 
         self._seed_accounts()
@@ -101,6 +105,22 @@ class Command(BaseCommand):
         self._seed_presence_cotisations(admin)
 
         self.stdout.write(self.style.SUCCESS("Données fictives créées avec succès !"))
+
+    def _apply_fictional_directory(self, member, idx):
+        """Renseigne des coordonnées fictives d'annuaire (téléphone, ville).
+
+        Les membres réels n'ont pas de coordonnées saisies : on génère des
+        données fictives cohérentes pour que l'annuaire de l'espace membre soit
+        rempli. Elles restent remplaçables par de vraies données via l'admin."""
+        cities = ["Lomé", "Palimé", "Aného", "Tsévié", "Atakpamé", "Sokodé",
+                  "Kpalimé", "Vogan", "Notsé", "Agbodrafo", "Dapaong", "Amlamé"]
+        prefixes = ["90", "91", "92", "96", "97", "98", "70", "71", "72", "93", "99"]
+        if not member.phone:
+            p = prefixes[idx % len(prefixes)]
+            member.phone = f"+228 {p} {12 + idx:02} {34 + idx:02} {56 + idx:02}"
+        if not member.address:
+            member.address = cities[idx % len(cities)]
+        return member
 
     def _ensure_user(self, username, email, password, is_superuser=False):
         existing = User.objects.filter(username=username).first()
@@ -153,7 +173,7 @@ class Command(BaseCommand):
     STALE_USERNAMES = ["membre19", "membre"]
 
     def _seed_accounts(self):
-        for uname, pwd, fn, ln, role, pos, disp, bio in self.BUREAU_ACCOUNTS:
+        for idx, (uname, pwd, fn, ln, role, pos, disp, bio) in enumerate(self.BUREAU_ACCOUNTS):
             user, created = User.objects.get_or_create(
                 username=uname,
                 defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
@@ -170,6 +190,7 @@ class Command(BaseCommand):
             member.bio = bio
             member.is_active_member = True
             member.show_in_directory = True
+            member = self._apply_fictional_directory(member, idx)
             member.save()
             pos_field = pos if pos in dict(BureauMember.POSITION_CHOICES) else "member"
             BureauMember.objects.update_or_create(
@@ -182,7 +203,7 @@ class Command(BaseCommand):
 
     def _seed_members(self):
         now = timezone.now().date()
-        for uname, fn, ln in self.MEMBER_ACCOUNTS:
+        for idx, (uname, fn, ln) in enumerate(self.MEMBER_ACCOUNTS):
             user, created = User.objects.get_or_create(
                 username=uname,
                 defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
@@ -201,6 +222,7 @@ class Command(BaseCommand):
             member.bio = "Membre actif de l'AFE."
             member.is_active_member = True
             member.show_in_directory = True
+            member = self._apply_fictional_directory(member, idx)
             member.save()
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Compte créé: {uname} / rSF4^XkB*I@zUoAlqX"))

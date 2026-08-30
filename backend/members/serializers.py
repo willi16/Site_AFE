@@ -44,7 +44,7 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "full_name", "email", "role", "role_display",
             "account_status", "account_status_display",
-            "membership_status", "membership_date", "phone", "photo",
+            "membership_status", "membership_date", "phone", "address", "photo",
             "bio", "show_in_directory", "joined_date", "is_active_member",
             "is_founder", "founder_title", "is_initiator",
         ]
