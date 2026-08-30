@@ -323,18 +323,15 @@ class Command(BaseCommand):
 
     def _seed_gallery(self, admin):
         now = timezone.now()
+        GalleryItem.objects.all().delete()
         # 1) Médias réels (photos et vidéos WhatsApp) depuis le dossier seed/gallery
         img_sources, vid_sources = self._collect_seed_media()
-        for _idx, (rel, name) in enumerate(img_sources, start=1):
-            if GalleryItem.objects.filter(caption=name, file_type="image").exists():
-                continue
-            n = GalleryItem.objects.filter(file_type="image", image_url="", video_url="").count() + 1
-            self._create_gallery_file_item(rel, name, f"Photo AFE {n}", "image", admin)
-        for _idx, (rel, name) in enumerate(vid_sources, start=1):
-            if GalleryItem.objects.filter(caption=name, file_type="video").exists():
-                continue
-            n = GalleryItem.objects.filter(file_type="video", image_url="", video_url="").count() + 1
-            self._create_gallery_file_item(rel, name, f"Vidéo AFE {n}", "video", admin)
+        img_by_name = {name: rel for rel, name in img_sources}
+        vid_by_name = {name: rel for rel, name in vid_sources}
+        for idx, name in enumerate(sorted(img_by_name), start=1):
+            self._create_gallery_file_item(img_by_name[name], name, f"Photo AFE {idx}", "image", admin)
+        for idx, name in enumerate(sorted(vid_by_name), start=1):
+            self._create_gallery_file_item(vid_by_name[name], name, f"Vidéo AFE {idx}", "video", admin)
 
         # 2) Éléments de démonstration en ligne (Unsplash / YouTube) — conservés
         images = [
@@ -354,15 +351,11 @@ class Command(BaseCommand):
             ("Nos ateliers d'entraide", "video", "Vidéos", "https://www.youtube.com/embed/1La4QzGeaaQ", "youtube"),
         ]
         for title, ftype, cat, url in images:
-            if GalleryItem.objects.filter(title=title).exists():
-                continue
             GalleryItem.objects.create(
                 title=title, caption=title, category=cat, file_type=ftype,
                 image_url=url, is_published=True, created_by=admin,
             )
         for title, ftype, cat, url, platform in videos:
-            if GalleryItem.objects.filter(title=title).exists():
-                continue
             GalleryItem.objects.create(
                 title=title, caption=title, category=cat, file_type=ftype,
                 video_url=url, video_platform=platform, is_published=True, created_by=admin,
