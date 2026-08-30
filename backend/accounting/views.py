@@ -1,3 +1,6 @@
+from django.http import FileResponse, Http404
+from django.conf import settings
+from pathlib import Path
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -277,6 +280,28 @@ class GalleryItemViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["get"], url_path="serve")
+    def serve(self, request, pk=None):
+        """Diffuse le média (photo/vidéo) d'un élément de galerie.
+
+        Les médias réels (seed/) sont diffusés directement depuis le dossier
+        seed/ versionné (aucun upload Cloudinary n'a lieu pendant le seed).
+        Les uploads du bureau (Cloudinary) sont renvoyés tels quels par le
+        serializer et ne passent pas ici."""
+        item = self.get_object()
+        value = item.video if item.file_type == "video" else item.image
+        rel = getattr(value, "name", "") if value else ""
+        if not rel or rel.startswith(("http://", "https://")):
+            raise Http404("Média distant : accès direct.")
+        path = Path(settings.BASE_DIR) / "seed" / rel
+        if not Path(path).exists():
+            raise Http404("Fichier introuvable.")
+        response = FileResponse(open(path, "rb"))
+        response["Content-Disposition"] = f'inline; filename="{Path(path).name}"'
+        # Autorise l'affichage dans une iframe du site public (ex. Vercel)
+        response["X-Frame-Options"] = "ALLOWALL"
+        return response
 
 
 class IsSecretaryOrAdmin(permissions.BasePermission):

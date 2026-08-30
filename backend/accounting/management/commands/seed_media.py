@@ -48,6 +48,14 @@ class Command(BaseCommand):
                     seed_file = seed_root / rel
                     if not seed_file.exists():
                         continue
+                    # Nom déjà relatif au dossier seed/ (ex. documents et
+                    # médias réels de la galerie) : le contenu est servi
+                    # directement depuis seed/ par les endpoints /serve/, un
+                    # (ré)upload vers le stockage (Cloudinary) est inutile.
+                    if rel == str(seed_file.relative_to(seed_root)):
+                        files_count += 1
+                        self.stdout.write(f"Déjà servi depuis seed/  {model.__name__}.{field.name} <- {rel}")
+                        continue
                     files_count += 1
                     if dry_run:
                         self.stdout.write(f"[DRY-RUN] {model.__name__}.{field.name} <- {rel}")
