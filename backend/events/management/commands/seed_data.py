@@ -398,14 +398,32 @@ class Command(BaseCommand):
 
         Le contenu est écrit via `default_storage.save(rel, ...)` pour garder un
         chemin relatif identique au dossier seed/ (les `Field.save()` préfixent
-        `upload_to=...` et doubleraient le chemin)."""
+        `upload_to=...` et doubleraient le chemin). L'upload est relancé avec un
+        backoff en cas d'erreur passagère (Cloudinary peut limiter/refuser par
+        à-coups le flux d'uploads pendant le seed)."""
+        import time
+
         from django.conf import settings
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
         src = os.path.join(settings.BASE_DIR, "seed", rel)
-        with open(src, "rb") as fh:
-            content = fh.read()
-        saved_name = default_storage.save(rel, ContentFile(content))
+        saved_name = None
+        last_exc = None
+        for attempt in range(1, 5):
+            try:
+                with open(src, "rb") as fh:
+                    content = fh.read()
+                saved_name = default_storage.save(rel, ContentFile(content))
+                break
+            except Exception as exc:
+                last_exc = exc
+                self.stdout.write(self.style.WARNING(
+                    f"Upload {title} <- {name} échoué (essai {attempt}/4): "
+                    f"{exc.__class__.__name__}: {exc}"
+                ))
+                time.sleep(3 * attempt)
+        if saved_name is None:
+            raise last_exc
         item = GalleryItem(
             title=title,
             caption=name,
@@ -419,6 +437,7 @@ class Command(BaseCommand):
         else:
             setattr(item, "video", saved_name)
         item.save()
+        time.sleep(0.5)
         self.stdout.write(self.style.SUCCESS(f"Média réel ajouté: {title} <- {name}"))
 
     def _seed_reports(self, admin):
