@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, FileText, Users, Camera, BookOpen, Download, Calendar } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,7 @@ const quickActions = [
 
 function MemberDashboard() {
   const { user, member } = useAuth();
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +63,7 @@ function MemberDashboard() {
             <FileText className="w-5 h-5 text-primary-500" /> Derniers documents
           </h2>
           {loading ? <LoadingSpinner className="py-10" /> : documents.length > 0 ? (
-            <div className="space-y-3">{documents.map((doc) => <DocumentCard key={doc.id} document={doc} showDownload />)}</div>
+            <div className="space-y-3">{documents.map((doc) => <DocumentCard key={doc.id} document={doc} showDownload onView={() => navigate('/espace-membre/documents')} />)}</div>
           ) : (
             <p className="text-surface-500 text-center py-10 bg-white rounded-2xl border border-surface-100">Aucun document disponible.</p>
           )}
