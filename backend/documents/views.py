@@ -58,11 +58,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if not user.is_authenticated:
+        # Membres, bureau et admin connectés : accès à tous les documents.
+        if (
+            user.is_authenticated
+            and getattr(user, "member_profile", None)
+        ):
             return Document.objects.all()
-        if hasattr(user, "member_profile") and user.member_profile.role in ("bureau", "admin", "secretary"):
-            return Document.objects.all()
-        return Document.objects.filter(visible_to__in=["public", "members"])
+        # Visiteurs (non connectés) : uniquement les documents publics
+        # (règlement intérieur + statuts).
+        return Document.objects.filter(visible_to="public")
 
     def perform_create(self, serializer):
         try:
