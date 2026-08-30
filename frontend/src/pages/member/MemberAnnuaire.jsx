@@ -21,7 +21,7 @@ function MemberAnnuaire() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    api.get('/members/')
+    api.get('/members/', { params: { page_size: 100 } })
       .then(({ data }) => setMembers(data.results || data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
