@@ -326,12 +326,25 @@ class Command(BaseCommand):
         GalleryItem.objects.all().delete()
         # 1) Médias réels (photos et vidéos WhatsApp) depuis le dossier seed/gallery
         img_sources, vid_sources = self._collect_seed_media()
+        self.stdout.write(self.style.WARNING(
+            f"Galerie: {len(img_sources)} image(s) et {len(vid_sources)} vidéo(s) dans seed/gallery"
+        ))
         img_by_name = {name: rel for rel, name in img_sources}
         vid_by_name = {name: rel for rel, name in vid_sources}
         for idx, name in enumerate(sorted(img_by_name), start=1):
-            self._create_gallery_file_item(img_by_name[name], name, f"Photo AFE {idx}", "image", admin)
+            try:
+                self._create_gallery_file_item(img_by_name[name], name, f"Photo AFE {idx}", "image", admin)
+            except Exception as exc:
+                self.stdout.write(self.style.ERROR(
+                    f"Échec photo {name}: {exc.__class__.__name__}: {exc}"
+                ))
         for idx, name in enumerate(sorted(vid_by_name), start=1):
-            self._create_gallery_file_item(vid_by_name[name], name, f"Vidéo AFE {idx}", "video", admin)
+            try:
+                self._create_gallery_file_item(vid_by_name[name], name, f"Vidéo AFE {idx}", "video", admin)
+            except Exception as exc:
+                self.stdout.write(self.style.ERROR(
+                    f"Échec vidéo {name}: {exc.__class__.__name__}: {exc}"
+                ))
 
         # 2) Éléments de démonstration en ligne (Unsplash / YouTube) — conservés
         images = [
