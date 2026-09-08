@@ -73,14 +73,30 @@ class DocumentViewSet(viewsets.ModelViewSet):
             _validate_uploaded_file(self.request)
         except Exception as exc:
             raise ValidationError(detail=str(exc))
-        serializer.save(uploaded_by=self.request.user)
+        doc = serializer.save(uploaded_by=self.request.user)
+        self._attach_upload(doc)
 
     def perform_update(self, serializer):
         try:
             _validate_uploaded_file(self.request)
         except Exception as exc:
             raise ValidationError(detail=str(exc))
-        serializer.save(uploaded_by=self.request.user)
+        doc = serializer.save(uploaded_by=self.request.user)
+        self._attach_upload(doc)
+
+    def _attach_upload(self, doc):
+        """Persiste le fichier envoyé en multipart.
+
+        Le champ `file` du serializer est un SerializerMethodField (lecture
+        seule), donc le fichier envoyé par le bureau n'était jamais
+        enregistré : le document était créé sans fichier, et les boutons
+        Visionner/Télécharger ne s'affichaient pas chez les membres."""
+        upload = self.request.FILES.get("file")
+        if upload is None:
+            return
+        if doc.file and doc.file.name:
+            doc.file.delete(save=False)
+        doc.file.save(upload.name, upload, save=True)
 
     @action(detail=True, methods=["get"], url_path="serve")
     def serve(self, request, pk=None):
