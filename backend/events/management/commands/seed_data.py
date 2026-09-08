@@ -329,6 +329,11 @@ class Command(BaseCommand):
             {"file": "rapport_Juin_2026.pdf", "title": "Rapport de Juin 2026", "category": "report", "visible_to": "members"},
         ]
         admin = User.objects.get(username="admin")
+        if Document.objects.exists():
+            self.stdout.write(self.style.WARNING(
+                "Documents: déjà présents, seed ignoré (conserve les documents du bureau)"
+            ))
+            return
         Document.objects.all().delete()
         created = 0
         for d in docs:
@@ -345,6 +350,11 @@ class Command(BaseCommand):
 
     def _seed_gallery(self, admin):
         now = timezone.now()
+        if GalleryItem.objects.exists():
+            self.stdout.write(self.style.WARNING(
+                "Galerie: déjà peuplée, seed ignoré (conserve les uploads du bureau)"
+            ))
+            return
         GalleryItem.objects.all().delete()
         # 1) Médias réels (photos et vidéos WhatsApp) depuis le dossier seed/gallery
         img_sources, vid_sources = self._collect_seed_media()
