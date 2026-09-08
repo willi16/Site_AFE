@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.fields import empty
 from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS, ALLOWED_IMAGES, ALLOWED_VIDEOS
 from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem, Donation, Notification
 
@@ -120,7 +121,20 @@ class CotisationSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_by", "created_at", "updated_at"]
 
 
+class NonHtmlBooleanField(serializers.BooleanField):
+    """BooleanField sans la sémantique « case à cocher » de DRF.
+
+    Pour une requête multipart (upload de fichier), DRF renvoie
+    default_empty_html (False) pour tout booléen absent, ce qui mettait
+    is_published=False à l'ajout d'une image/vidéo par le bureau et rendait
+    la publication invisible aux membres/visiteurs. default_empty_html=empty
+    rend le champ « absent », donc le défaut (True) s'applique."""
+
+    default_empty_html = empty
+
+
 class GalleryItemSerializer(serializers.ModelSerializer):
+    is_published = NonHtmlBooleanField(required=False, default=True)
     image = GalleryMediaImageField(
         required=False, allow_null=True,
         validators=[validate_upload(ALLOWED_IMAGES)],
