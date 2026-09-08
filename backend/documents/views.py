@@ -16,15 +16,22 @@ def _resolve_document_path(doc):
     """Retourne le chemin réel du fichier d'un document.
 
     On privilégie le dossier seed/ (versionné dans git, donc toujours présent
-    sur Render) puis le MEDIA_ROOT (pour les documents uploadés)."""
+    sur Render) puis le MEDIA_ROOT (pour les documents enregistrés en local).
+    Un document hébergé en externe (Cloudinary, nom = URL) n'a pas de chemin
+    local : il est servi directement par media_url, pas via cet endpoint."""
     rel = doc.file.name
     if not rel:
+        return None
+    if rel.startswith(("http://", "https://")):
         return None
     seed_file = Path(settings.BASE_DIR) / "seed" / rel
     if seed_file.exists():
         return str(seed_file)
-    if default_storage.exists(rel):
-        return default_storage.path(rel)
+    try:
+        if default_storage.exists(rel):
+            return default_storage.path(rel)
+    except (NotImplementedError, OSError):
+        pass
     return None
 
 
@@ -88,14 +95,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """Persiste le fichier envoyé en multipart.
 
         Le champ `file` du serializer est un SerializerMethodField (lecture
-        seule), donc le fichier envoyé par le bureau n'était jamais
-        enregistré : le document était créé sans fichier, et les boutons
-        Visionner/Télécharger ne s'affichaient pas chez les membres."""
+        seule) : le fichier envoyé par le bureau n'était jamais enregistré
+        (document sans fichier → pas de bouton Visionner/Télécharger pour les
+        membres), ou partait sur le disque éphémère de Render (perdu au
+        redéploiement). Avec le stockage par défaut, l'upload part sur
+        Cloudinary et le nom stocké devient l'URL sécurisée complète."""
         upload = self.request.FILES.get("file")
         if upload is None:
             return
         if doc.file and doc.file.name:
-            doc.file.delete(save=False)
+            try:
+                doc.file.delete(save=False)
+            except Exception:
+                pass
         doc.file.save(upload.name, upload, save=True)
 
     @action(detail=True, methods=["get"], url_path="serve")

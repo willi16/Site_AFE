@@ -341,10 +341,12 @@ class Command(BaseCommand):
             doc = Document.objects.create(uploaded_by=admin, title=d["title"], category=d["category"], visible_to=d["visible_to"], description="")
             src = os.path.join(seed_docs_dir, d["file"])
             if os.path.exists(src):
-                with open(src, "rb") as f:
-                    doc.file.save(d["file"], File(f), save=False)
-                    doc.file.name = rel
-                    doc.save(update_fields=["file"])
+                # On référence simplement le fichier seed/ (diffusé par
+                # /api/documents/<id>/serve/) sans uploader : le stockage
+                # par défaut pointe vers Cloudinary et on ne veut pas
+                # consommer le quota au seed pour des fichiers déjà versionnés.
+                doc.file.name = rel
+                doc.save(update_fields=["file"])
                 created += 1
         self.stdout.write(self.style.SUCCESS(f"Documents: {Document.objects.count()} (créés: {created})"))
 
