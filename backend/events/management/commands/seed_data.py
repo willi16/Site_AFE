@@ -178,27 +178,33 @@ class Command(BaseCommand):
                 username=uname,
                 defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
             )
-            user.email = f"{uname}@afe-association.org"
-            user.first_name = fn
-            user.last_name = ln
-            user.set_password(pwd)
-            user.save()
-            member, _ = Member.objects.get_or_create(user=user)
-            member.role = role
-            member.rgpd_consent = True
-            member.membership_status = True
-            member.bio = bio
-            member.is_active_member = True
-            member.show_in_directory = True
-            member = self._apply_fictional_directory(member, idx)
-            member.save()
-            pos_field = pos if pos in dict(BureauMember.POSITION_CHOICES) else "member"
-            BureauMember.objects.update_or_create(
+            if created:
+                # Identité + mot de passe positionnés uniquement à la création,
+                # pour que toute modification faite via le site persiste au redéploiement.
+                user.set_password(pwd)
+                user.email = f"{uname}@afe-association.org"
+                user.first_name = fn
+                user.last_name = ln
+                user.save()
+                self.stdout.write(self.style.SUCCESS(
+                    f"Compte bureau créé: {uname} / {pwd} ({fn} {ln})"
+                ))
+            member, member_created = Member.objects.get_or_create(user=user)
+            if member_created:
+                member.role = role
+                member.rgpd_consent = True
+                member.membership_status = True
+                member.bio = bio
+                member.is_active_member = True
+                member.show_in_directory = True
+                member = self._apply_fictional_directory(member, idx)
+                member.save()
+            BureauMember.objects.get_or_create(
                 member=member,
-                defaults={"position": pos_field, "display_order": disp},
+                defaults={"position": pos if pos in dict(BureauMember.POSITION_CHOICES) else "member", "display_order": disp},
             )
             self.stdout.write(self.style.SUCCESS(
-                f"Compte bureau à jour: {uname} / {pwd} ({fn} {ln})"
+                f"Compte bureau vérifié: {uname} (rôle {role})"
             ))
 
     def _seed_members(self):
@@ -208,24 +214,26 @@ class Command(BaseCommand):
                 username=uname,
                 defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
             )
-            user.email = f"{uname}@afe-association.org"
-            user.first_name = fn
-            user.last_name = ln
-            user.set_password("rSF4^XkB*I@zUoAlqX")
-            user.save()
-            member, _ = Member.objects.get_or_create(user=user)
-            member.role = "member"
-            member.rgpd_consent = True
-            member.membership_status = True
-            if not member.membership_date:
-                member.membership_date = now - timedelta(days=int(uname.replace("membre", "")[:2]) % 12 * 30 + 30)
-            member.bio = "Membre actif de l'AFE."
-            member.is_active_member = True
-            member.show_in_directory = True
-            member = self._apply_fictional_directory(member, idx)
-            member.save()
             if created:
+                # Identité + mot de passe positionnés uniquement à la création,
+                # pour que toute modification faite via le site persiste au redéploiement.
+                user.set_password("rSF4^XkB*I@zUoAlqX")
+                user.email = f"{uname}@afe-association.org"
+                user.first_name = fn
+                user.last_name = ln
+                user.save()
                 self.stdout.write(self.style.SUCCESS(f"Compte créé: {uname} / rSF4^XkB*I@zUoAlqX"))
+            member, member_created = Member.objects.get_or_create(user=user)
+            if member_created:
+                member.role = "member"
+                member.rgpd_consent = True
+                member.membership_status = True
+                member.membership_date = now - timedelta(days=int(uname.replace("membre", "")[:2]) % 12 * 30 + 30)
+                member.bio = "Membre actif de l'AFE."
+                member.is_active_member = True
+                member.show_in_directory = True
+                member = self._apply_fictional_directory(member, idx)
+                member.save()
 
         # Retrait des anciens comptes de démonstration sans personne réelle associée
         for uname in self.STALE_USERNAMES:
@@ -239,23 +247,21 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Membres réels: {len(self.MEMBER_ACCOUNTS)} raccordés aux comptes"))
 
     def _seed_founders(self):
-        # Remise à zéro des marqueurs fondateurs pour tous les membres
-        Member.objects.update(is_founder=False, founder_title="", is_initiator=False)
-        # SAGBO Jean-Pierre (compte membre20) = Président fondateur (distinct du président actuel)
+        # Uniquement à la première création : préserve les marqueurs fondateurs
+        # modifiés via le site (action "Membre fondateur" du secrétaire).
         founder = Member.objects.filter(user__username="membre20").first()
-        if founder:
+        if founder and not founder.is_founder:
             founder.is_founder = True
             founder.founder_title = "Président fondateur"
             founder.is_initiator = True
             founder.save(update_fields=["is_founder", "founder_title", "is_initiator"])
-        # Le président actuel (bureau) n'est PAS fondateur
-        president = Member.objects.filter(user__username="bureau").first()
-        if president:
-            president.is_founder = False
-            president.founder_title = ""
-            president.is_initiator = False
-            president.save(update_fields=["is_founder", "founder_title", "is_initiator"])
-        self.stdout.write(self.style.SUCCESS("Président fondateur (SAGBO) distinct du président actuel (KOLIWONOU)"))
+            self.stdout.write(self.style.SUCCESS(
+                "Président fondateur (SAGBO Jean-Pierre) marqué (compte membre20)"
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                "Marqueurs fondateurs conservés (modifs du site préservées)"
+            ))
 
     def _seed_events(self, admin):
         now = timezone.now()
