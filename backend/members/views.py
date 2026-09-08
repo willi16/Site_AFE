@@ -28,7 +28,7 @@ class MemberPagination(PageNumberPagination):
 
 
 class IsEditorOrReadOnly(permissions.BasePermission):
-    """Écriture réservée au secrétaire uniquement ; le reste du bureau consulte."""
+    """Écriture réservée à l'admin et au secrétaire ; le reste du bureau consulte."""
 
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
@@ -37,7 +37,7 @@ class IsEditorOrReadOnly(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role == "secretary"
+            and request.user.member_profile.role in ("admin", "secretary")
         )
 
 

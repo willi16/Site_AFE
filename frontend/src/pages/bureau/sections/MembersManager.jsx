@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera, Crown, MoreVertical } from 'lucide-react';
+import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera, Crown, Ellipsis } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
@@ -9,8 +9,8 @@ import { confirmAction, confirmDelete, showSuccess, showError, showLoading, clos
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
 export default function MembersManager({ canRegister = true }) {
-  const { isSecretary } = useAuth();
-  const canEdit = isSecretary;
+  const { isSecretary, isAdmin } = useAuth();
+  const canEdit = isSecretary || isAdmin;
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
@@ -326,7 +326,7 @@ export default function MembersManager({ canRegister = true }) {
                             title="Actions"
                             className="p-2 rounded-lg hover:bg-surface-100 text-surface-500"
                           >
-                            <MoreVertical className="w-4 h-4" />
+                            <Ellipsis className="w-5 h-5" />
                           </button>
                           {menuFor === m.id && (
                             <>
