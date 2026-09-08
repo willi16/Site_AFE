@@ -24,6 +24,16 @@ class Document(models.Model):
         upload_to="documents/%Y/%m/",
         max_length=500,
     )
+    file_data = models.BinaryField(
+        "Contenu du fichier",
+        null=True,
+        blank=True,
+        help_text=(
+            "Octets du fichier uploadé par le bureau, stockés en base pour "
+            "survivre aux redéploiements (disque éphémère sur Render). Les "
+            "documents seed/ n'utilisent que `file` (référence vers seed/)."
+        ),
+    )
     category = models.CharField("Catégorie", max_length=20, choices=CATEGORY_CHOICES)
     visible_to = models.CharField("Visible pour", max_length=20, choices=VISIBILITY_CHOICES, default="members")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="uploaded_documents")

@@ -5,16 +5,23 @@ from .models import Document
 def media_url(obj, request=None):
     """Retourne l'URL d'accès au fichier d'un document.
 
-    - Les fichiers hébergés en externe (Cloudinary : nom stocké = URL complète)
-      sont renvoyés tels quels.
-    - Tous les autres (documents seed/, sauvegardés en local) renvoient l'URL
-      de service `/api/documents/<id>/serve/`, qui diffusera depuis seed/
-      ou MEDIA_ROOT de façon fiable sur Render."""
+    - Documents contenus en base (upload du bureau : `file_data`) → endpoint
+      protégé `/api/documents/<id>/serve/`.
+    - Documents seed/ (`file` relatif) → même endpoint serve (lecture depuis
+      seed/).
+    - Fichiers hébergés en externe (nom stocké = URL complète) → tels quels.
+    """
+    if obj.file_data:
+        return _serve_path(obj, request)
     if not obj.file:
         return None
     name = obj.file.name
     if name.startswith(("http://", "https://")):
         return name
+    return _serve_path(obj, request)
+
+
+def _serve_path(obj, request=None):
     serve_path = f"/api/documents/{obj.id}/serve/"
     if request is not None:
         return request.build_absolute_uri(serve_path)

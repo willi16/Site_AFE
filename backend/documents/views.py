@@ -1,7 +1,8 @@
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.conf import settings
 from django.core.files.storage import default_storage
 from pathlib import Path
+import mimetypes
 
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
@@ -10,29 +11,6 @@ from rest_framework.exceptions import ValidationError
 from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS
 from .models import Document
 from .serializers import DocumentSerializer, DocumentPublicSerializer
-
-
-def _resolve_document_path(doc):
-    """Retourne le chemin réel du fichier d'un document.
-
-    On privilégie le dossier seed/ (versionné dans git, donc toujours présent
-    sur Render) puis le MEDIA_ROOT (pour les documents enregistrés en local).
-    Un document hébergé en externe (Cloudinary, nom = URL) n'a pas de chemin
-    local : il est servi directement par media_url, pas via cet endpoint."""
-    rel = doc.file.name
-    if not rel:
-        return None
-    if rel.startswith(("http://", "https://")):
-        return None
-    seed_file = Path(settings.BASE_DIR) / "seed" / rel
-    if seed_file.exists():
-        return str(seed_file)
-    try:
-        if default_storage.exists(rel):
-            return default_storage.path(rel)
-    except (NotImplementedError, OSError):
-        pass
-    return None
 
 
 def _validate_uploaded_file(request):
@@ -92,29 +70,42 @@ class DocumentViewSet(viewsets.ModelViewSet):
         self._attach_upload(doc)
 
     def _attach_upload(self, doc):
-        """Persiste le fichier envoyé en multipart.
+        """Persiste le fichier envoyé en multipart en base de données.
 
         Le champ `file` du serializer est un SerializerMethodField (lecture
         seule) : le fichier envoyé par le bureau n'était jamais enregistré
         (document sans fichier → pas de bouton Visionner/Télécharger pour les
-        membres), ou partait sur le disque éphémère de Render (perdu au
-        redéploiement). Avec le stockage par défaut, l'upload part sur
-        Cloudinary et le nom stocké devient l'URL sécurisée complète."""
+        membres). Le disque de Render étant éphémère et Cloudinary refusant la
+        livraison raw (401), le contenu est stocké en base (Postgres survit
+        aux redéploiements) et diffusé via /serve/ (authentifié)."""
         upload = self.request.FILES.get("file")
         if upload is None:
             return
+        MAX = 25 * 1024 * 1024
+        if upload.size > MAX:
+            raise ValidationError(detail="Fichier trop volumineux (max 25 Mo).")
+        doc.file_data = upload.read()
+        doc._upload_name = upload.name
         if doc.file and doc.file.name:
             try:
                 doc.file.delete(save=False)
             except Exception:
                 pass
-        doc.file.save(upload.name, upload, save=True)
+        doc.file = ""
+        doc.save(update_fields=["file_data", "file"])
 
     @action(detail=True, methods=["get"], url_path="serve")
     def serve(self, request, pk=None):
         """Diffuse le fichier d'un document (visionnage / téléchargement)."""
         doc = self.get_object()
-        path = _resolve_document_path(doc)
+        if doc.file_data:
+            name = getattr(doc, "_upload_name", None) or doc.title
+            content_type = mimetypes.guess_type(name)[0] or "application/pdf"
+            response = HttpResponse(bytes(doc.file_data), content_type=content_type)
+            response["Content-Disposition"] = f'inline; filename="{Path(name).name}"'
+            response["X-Frame-Options"] = "ALLOWALL"
+            return response
+        path = self._local_path(doc)
         if not path:
             raise Http404("Fichier introuvable.")
         response = FileResponse(open(path, "rb"))
@@ -122,3 +113,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Autorise l'affichage du PDF dans une iframe du site public (ex. Vercel)
         response["X-Frame-Options"] = "ALLOWALL"
         return response
+
+    def _local_path(self, doc):
+        rel = doc.file.name if doc.file else ""
+        if not rel or rel.startswith(("http://", "https://")):
+            return None
+        seed_file = Path(settings.BASE_DIR) / "seed" / rel
+        if seed_file.exists():
+            return str(seed_file)
+        try:
+            if default_storage.exists(rel):
+                return default_storage.path(rel)
+        except (NotImplementedError, OSError):
+            pass
+        return None
