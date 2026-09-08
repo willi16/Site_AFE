@@ -9,7 +9,7 @@ from django.conf import settings
 from django.db.models.deletion import ProtectedError
 from .models import Member, BureauMember, MembershipApplication, AssociationSettings
 from .serializers import (
-    MemberSerializer, MemberPublicSerializer, MemberRegisterSerializer,
+    MemberSerializer, MemberAdminSerializer, MemberPublicSerializer, MemberRegisterSerializer,
     BureauMemberSerializer, MembershipApplicationSerializer,
     MembershipApplicationCreateSerializer, AssociationSettingsSerializer,
     generate_username,
@@ -28,7 +28,7 @@ class MemberPagination(PageNumberPagination):
 
 
 class IsEditorOrReadOnly(permissions.BasePermission):
-    """Ecriture réservée au secrétaire et à l'admin ; les autres membres du bureau consultent uniquement."""
+    """Écriture réservée au secrétaire uniquement ; le reste du bureau consulte."""
 
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
@@ -37,7 +37,7 @@ class IsEditorOrReadOnly(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and hasattr(request.user, "member_profile")
-            and request.user.member_profile.role in ("admin", "secretary")
+            and request.user.member_profile.role == "secretary"
         )
 
 
@@ -49,6 +49,11 @@ class MemberViewSet(viewsets.ModelViewSet):
     search_fields = ["user__username", "user__first_name", "user__last_name", "user__email", "phone", "role"]
     ordering_fields = ["user__first_name", "user__last_name", "joined_date", "role"]
     ordering = ["user__last_name"]
+
+    def get_serializer_class(self):
+        if self.action in ("update", "partial_update"):
+            return MemberAdminSerializer
+        return MemberSerializer
 
     def get_queryset(self):
         qs = Member.objects.all()

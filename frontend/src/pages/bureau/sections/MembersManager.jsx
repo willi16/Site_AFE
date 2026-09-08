@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera, Crown } from 'lucide-react';
+import { Users, UserPlus, Upload, X, Pencil, Trash2, Search, UserCheck, UserX, Pause, ChevronLeft, ChevronRight, Camera, Crown, MoreVertical } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
@@ -9,15 +9,18 @@ import { confirmAction, confirmDelete, showSuccess, showError, showLoading, clos
 const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
 export default function MembersManager({ canRegister = true }) {
-  const { isSecretary, isAdmin, isTreasurer } = useAuth();
-  const canEdit = isSecretary || isAdmin || isTreasurer;
+  const { isSecretary } = useAuth();
+  const canEdit = isSecretary;
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [menuFor, setMenuFor] = useState(null);
   const [editingPhoto, setEditingPhoto] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '', address: '' });
   const [founderModal, setFounderModal] = useState(null);
   const [founderForm, setFounderForm] = useState({ is_founder: false, founder_title: '', is_initiator: false });
   const [form, setForm] = useState({ username: '', first_name: '', last_name: '', email: '', password: '', phone: '', role: 'member' });
@@ -154,6 +157,37 @@ export default function MembersManager({ canRegister = true }) {
     } catch (err) { closeLoading(); showError('Échec', extractError(err, 'Impossible d\'activer le compte.')); }
   };
 
+  const openEdit = (m) => {
+    setEditForm({
+      first_name: m.user?.first_name || '',
+      last_name: m.user?.last_name || '',
+      email: m.email || '',
+      phone: m.phone || '',
+      address: m.address || '',
+    });
+    setEditing(m);
+    setMenuFor(null);
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editing) return;
+    const ok = await confirmAction(
+      'Modifier ce membre ?',
+      `Les informations de « ${editing.full_name} » seront mises à jour.`,
+      { icon: 'question', confirmText: 'Oui, mettre à jour' }
+    );
+    if (!ok.isConfirmed) return;
+    showLoading('Mise à jour...');
+    try {
+      await api.patch(`/members/${editing.id}/`, editForm);
+      closeLoading();
+      showSuccess('Membre mis à jour', `Les informations de ${editing.full_name} ont été modifiées.`);
+      setEditing(null);
+      load();
+    } catch (err) { closeLoading(); console.error(err); showError('Échec', extractError(err, 'Erreur lors de la mise à jour.')); }
+  };
+
   const handleDelete = async (m) => {
     const ok = await confirmDelete(
       `le membre ${m.full_name}`,
@@ -284,18 +318,54 @@ export default function MembersManager({ canRegister = true }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      {canEdit && m.account_status !== 'active' && (
-                        <button onClick={() => handleActivate(m)} title="Activer" className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-500"><UserCheck className="w-4 h-4" /></button>
+                      {canEdit && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setMenuFor(menuFor === m.id ? null : m.id)}
+                            title="Actions"
+                            className="p-2 rounded-lg hover:bg-surface-100 text-surface-500"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {menuFor === m.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setMenuFor(null)} />
+                              <div className="absolute right-0 mt-1 z-50 w-56 bg-white rounded-xl border border-surface-200 shadow-xl py-1.5">
+                                <button onClick={() => openEdit(m)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-surface-700 hover:bg-surface-50 text-left">
+                                  <Pencil className="w-4 h-4 text-surface-400" /> Modifier les informations
+                                </button>
+                                <button onClick={() => setEditingPhoto(m.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-surface-700 hover:bg-surface-50 text-left">
+                                  <Camera className="w-4 h-4 text-surface-400" /> Changer la photo
+                                </button>
+                                <button onClick={() => openFounder(m)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-surface-50 text-left ${m.is_founder ? 'text-amber-600' : 'text-surface-700'}`}>
+                                  <Crown className={`w-4 h-4 ${m.is_founder ? 'text-amber-500' : 'text-surface-400'}`} /> Membre fondateur
+                                </button>
+                                <div className="my-1.5 border-t border-surface-100" />
+                                {m.account_status !== 'active' && (
+                                  <button onClick={() => handleActivate(m)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 text-left">
+                                    <UserCheck className="w-4 h-4" /> Activer le compte
+                                  </button>
+                                )}
+                                {m.account_status === 'active' && (
+                                  <button onClick={() => handleStatus(m, 'suspend', 'Suspendre')} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 text-left">
+                                    <Pause className="w-4 h-4" /> Suspendre
+                                  </button>
+                                )}
+                                {m.account_status !== 'deactivated' && (
+                                  <button onClick={() => handleStatus(m, 'deactivate', 'Désactiver')} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 text-left">
+                                    <UserX className="w-4 h-4" /> Désactiver
+                                  </button>
+                                )}
+                                <div className="my-1.5 border-t border-surface-100" />
+                                <button onClick={() => handleDelete(m)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left">
+                                  <Trash2 className="w-4 h-4" /> Supprimer
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
-                      {canEdit && m.account_status === 'active' && (
-                        <button onClick={() => handleStatus(m, 'suspend', 'Suspendre')} title="Suspendre" className="p-2 rounded-lg hover:bg-amber-50 text-amber-500"><Pause className="w-4 h-4" /></button>
-                      )}
-                      {canEdit && m.account_status !== 'deactivated' && (
-                        <button onClick={() => handleStatus(m, 'deactivate', 'Désactiver')} title="Désactiver" className="p-2 rounded-lg hover:bg-orange-50 text-orange-500"><UserX className="w-4 h-4" /></button>
-                      )}
-                      {canEdit && <button onClick={() => setEditingPhoto(m.id)} title="Changer la photo" className="p-2 rounded-lg hover:bg-surface-100 text-surface-500"><Upload className="w-4 h-4" /></button>}
-                      {canEdit && <button onClick={() => openFounder(m)} title="Membre fondateur" className={`p-2 rounded-lg hover:bg-amber-50 ${m.is_founder ? 'text-amber-500' : 'text-surface-400'}`}><Crown className="w-4 h-4" /></button>}
-                      {canEdit && <button onClick={() => handleDelete(m)} title="Supprimer" className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   </td>
                 </tr>
@@ -325,6 +395,31 @@ export default function MembersManager({ canRegister = true }) {
               <Upload className="w-4 h-4" /> Choisir une photo
               <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
             </label>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-surface-900"><Pencil className="w-4 h-4 inline mr-2" />Modifier le membre</h3>
+              <button onClick={() => setEditing(null)} className="text-surface-400 hover:text-surface-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-surface-500 mb-5">{editing.full_name}</p>
+            <form onSubmit={handleEditSave} className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <input value={editForm.first_name} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} required placeholder="Prénom" className="input" />
+                <input value={editForm.last_name} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} required placeholder="Nom" className="input" />
+                <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" required placeholder="Email" className="input" />
+                <input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Téléphone" className="input" />
+              </div>
+              <input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="Adresse" className="input" />
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-primary-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-primary-600">Enregistrer</button>
+                <button type="button" onClick={() => setEditing(null)} className="px-4 py-2.5 rounded-xl border border-surface-200 text-surface-600">Annuler</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

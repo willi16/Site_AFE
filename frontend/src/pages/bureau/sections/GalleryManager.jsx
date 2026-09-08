@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Trash2, Play, Film, Image as ImageIcon, X } from 'lucide-react';
+import { Camera, Upload, Trash2, Play, Film, Image as ImageIcon, X, Pencil } from 'lucide-react';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import { useAuth } from '../../../context/AuthContext';
@@ -15,6 +15,8 @@ export default function GalleryManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', caption: '', category: '', file_type: 'image', file: null });
   const [form, setForm] = useState({ title: '', caption: '', category: '', file_type: 'image', file: null });
 
   const load = useCallback(async () => {
@@ -52,6 +54,45 @@ export default function GalleryManager() {
       setForm({ title: '', caption: '', category: '', file_type: 'image', file: null });
       load();
     } catch (err) { closeLoading(); console.error(err); showError('Échec de l\'ajout', extractError(err, 'Erreur lors de l\'ajout du média.')); }
+  };
+
+  const openEdit = (it) => {
+    setEditForm({
+      title: it.title || '',
+      caption: it.caption || '',
+      category: it.category || '',
+      file_type: it.file_type || 'image',
+      file: null,
+    });
+    setEditing(it);
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editing) return;
+    const ok = await confirmAction(
+      'Enregistrer les modifications ?',
+      `Le média « ${editForm.title} » sera mis à jour.`,
+      { icon: 'question', confirmText: 'Oui, enregistrer' }
+    );
+    if (!ok.isConfirmed) return;
+    const fd = new FormData();
+    fd.append('title', editForm.title);
+    fd.append('caption', editForm.caption);
+    fd.append('category', editForm.category);
+    fd.append('file_type', editForm.file_type);
+    if (editForm.file) {
+      if (editForm.file_type === 'image') fd.append('image', editForm.file);
+      else fd.append('video', editForm.file);
+    }
+    showLoading('Mise à jour du média...');
+    try {
+      await api.patch(`/gallery/${editing.id}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeLoading();
+      showSuccess('Média mis à jour');
+      setEditing(null);
+      load();
+    } catch (err) { closeLoading(); console.error(err); showError('Échec de la mise à jour', extractError(err, 'Erreur lors de la mise à jour du média.')); }
   };
 
   const handleDelete = async (it) => {
@@ -128,11 +169,47 @@ export default function GalleryManager() {
                 </p>
                 {it.caption && <p className="text-xs text-surface-400">{it.caption}</p>}
               </div>
-              {canEdit && <button onClick={() => handleDelete(it)} className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all">
-                <Trash2 className="w-4 h-4" />
-              </button>}
+              {canEdit && (
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button onClick={() => openEdit(it)} title="Modifier" className="p-1.5 bg-white/90 rounded-lg text-surface-600 hover:bg-surface-100">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(it)} title="Supprimer" className="p-1.5 bg-white/90 rounded-lg text-red-500 hover:bg-red-50">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-surface-900"><Pencil className="w-4 h-4 inline mr-2" />Modifier le média</h3>
+              <button onClick={() => setEditing(null)} className="text-surface-400 hover:text-surface-600"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleEditSave} className="space-y-4">
+              <input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} required placeholder="Titre" className="input" />
+              <input value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} placeholder="Catégorie (Événements, Solidarité...)" className="input" />
+              <input value={editForm.caption} onChange={e => setEditForm({ ...editForm, caption: e.target.value })} placeholder="Légende" className="input" />
+              <select value={editForm.file_type} onChange={e => setEditForm({ ...editForm, file_type: e.target.value })} className="input">
+                <option value="image">Image</option>
+                <option value="video">Vidéo</option>
+              </select>
+              <label className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-surface-300 cursor-pointer text-sm text-surface-500 hover:border-primary-400">
+                {editForm.file_type === 'image' ? <ImageIcon className="w-4 h-4" /> : <Film className="w-4 h-4" />}
+                {editForm.file ? editForm.file.name : 'Remplacer le média (facultatif)'}
+                <input type="file" accept={editForm.file_type === 'image' ? 'image/*' : 'video/*'} onChange={e => setEditForm({ ...editForm, file: e.target.files[0] })} className="hidden" />
+              </label>
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-primary-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-primary-600">Enregistrer</button>
+                <button type="button" onClick={() => setEditing(null)} className="px-4 py-2.5 rounded-xl border border-surface-200 text-surface-600">Annuler</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
