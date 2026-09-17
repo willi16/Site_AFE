@@ -5,6 +5,7 @@ import { ArrowRight, Heart, Users, Calendar, Award, Shield, Handshake, BookOpen,
 import SectionHeader from '../../components/ui/SectionHeader';
 import EventCard from '../../components/ui/EventCard';
 import api from '../../api/axios';
+import { useSEO } from '../../hooks/useSEO';
 
 const stats = [
   { icon: Users, value: '24', label: 'Membres actifs' },
@@ -21,7 +22,7 @@ const featuredEvents = [
 
 const latestNews = [
   { id: 1, title: 'Nouveau partenariat avec la Ville', excerpt: 'L\'AFE signe un accord de partenariat historique avec la municipalité pour renforcer nos actions sociales.', created_at: '2026-08-20T10:00:00Z' },
-  { id: 2, title: 'Résultats de la collecte solidaire', excerpt: 'Grâce à votre générosité, nous avons récolté plus de 5000€ pour les familles dans le besoin.', created_at: '2026-08-15T10:00:00Z' },
+  { id: 2, title: 'Résultats de la collecte solidaire', excerpt: 'Grâce à votre générosité, nous avons récolté plus de 250000FCfa dans le cadre de distribution des kits scolaires.', created_at: '2026-08-15T10:00:00Z' },
   { id: 3, title: 'Assemblée Générale 2026', excerpt: 'Retrouvez le compte-rendu de notre AG annuelle et les perspectives pour l\'année à venir.', created_at: '2026-08-10T10:00:00Z' },
 ];
 
@@ -30,6 +31,13 @@ const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren:
 
 function HomePage() {
   const [memberCount, setMemberCount] = useState(null);
+
+  useSEO({
+    title: "AFE — Association de Fraternité et d'Entraide | Solidarité, événements, adhésion et dons",
+    description:
+      "AFE, Association de Fraternité et d'Entraide : solidarité, entraide et vie associative. Découvrez nos événements, actualités, adhésions et façons de faire un don.",
+    path: '/',
+  });
 
   useEffect(() => {
     api.get('/members/directory/').then(({ data }) => {
@@ -49,7 +57,7 @@ function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
           <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="max-w-3xl">
             <motion.div variants={fadeInUp} className="flex items-center gap-2 mb-6">
-              <img src="/logo-afe.jpg" alt="AFE Logo" className="w-12 h-12 rounded-xl object-cover" />
+              <img src="/logo-afe.jpg" alt="Logo de l'Association de Fraternité et d'Entraide (AFE)" className="w-12 h-12 rounded-xl object-cover" />
               <span className="text-white/80 font-medium">Association de Fraternité et d'Entraide</span>
             </motion.div>
             <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight mb-6 font-[var(--font-display)]">
@@ -98,7 +106,7 @@ function HomePage() {
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
               <div className="relative">
                 <div className="aspect-[4/3] bg-gradient-to-br from-primary-500 to-primary-700 rounded-3xl overflow-hidden">
-                  <img src="/logo-afe.jpg" alt="AFE" className="w-full h-full object-cover opacity-30" />
+                  <img src="/logo-afe.jpg" alt="" className="w-full h-full object-cover opacity-30" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Handshake className="w-24 h-24 text-white/40" />
                   </div>

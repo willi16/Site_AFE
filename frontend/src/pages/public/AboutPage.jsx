@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -15,7 +16,7 @@ const values = [
   { icon: Users, title: 'Communauté', description: 'Nous construisons une communauté forte et unie, où chacun trouve sa place et peut contribuer au bien commun.' },
   { icon: Target, title: 'Engagement', description: "Chaque membre s'engage activement dans les projets de l'association, avec passion et détermination." },
   { icon: Eye, title: 'Transparence', description: "Nous croyons en une gestion transparente et responsable, rendant compte de nos actions à l'ensemble des membres." },
-  { icon: Award, title: 'Excellence', description: "Nous visons l'excellence dans chacune de nos actions pour maximiser notre impact positif sur la communauté." },
+  { icon: Award, title: 'Excellence', description: "Nous visons l'excellence dans chacune de nos actions pour maximiser notre impact positif sur la communauté et la vie de chaque membre." },
 ];
 
 function FoundingMembers() {
@@ -124,6 +125,13 @@ function FoundingMembers() {
 function AboutPage() {
   const [memberCount, setMemberCount] = useState(null);
 
+  useSEO({
+    title: "L'Association — AFE, Association de Fraternité et d'Entraide",
+    description:
+      "Découvrez l'histoire, les valeurs (fraternité, entraide, communauté, engagement, transparence, excellence) et la mission de l'Association de Fraternité et d'Entraide (AFE).",
+    path: '/association',
+  });
+
   useEffect(() => {
     api.get('/members/directory/').then(({ data }) => {
       const list = data.results || data || [];
@@ -169,7 +177,7 @@ function AboutPage() {
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
               <div className="relative">
                 <div className="aspect-square bg-gradient-to-br from-primary-500 to-primary-700 rounded-3xl overflow-hidden flex items-center justify-center">
-                  <img src="/logo-afe.jpg" alt="AFE Logo" className="w-32 h-32 rounded-2xl object-cover opacity-20" />
+                  <img src="/logo-afe.jpg" alt="Logo de l'Association de Fraternité et d'Entraide (AFE)" className="w-32 h-32 rounded-2xl object-cover opacity-20" />
                 </div>
                 <div className="absolute -top-4 -left-4 w-24 h-24 bg-accent-500 rounded-2xl flex items-center justify-center shadow-xl">
                   <span className="text-2xl font-bold text-white">5+</span>

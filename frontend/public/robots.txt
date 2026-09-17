@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Espaces privés (accès protégé par mot de passe)
+Disallow: /login
+Disallow: /espace-membre/
+Disallow: /espace-bureau/
+Disallow: /espace-secretaire/
+Disallow: /espace-tresorier/
+
+Sitemap: https://site-afe.vercel.app/sitemap.xml
