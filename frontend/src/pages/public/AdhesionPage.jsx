@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -165,6 +166,13 @@ function AdhesionPage() {
   const [memberCount, setMemberCount] = useState(null);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+
+  useSEO({
+    title: "Adhésion — Rejoindre l'AFE, Association de Fraternité et d'Entraide",
+    description:
+      "Candidature d'adhésion à l'AFE : avantages, cotisations, soutien financier aux membres (mariage, décès, naissance, hospitalisation). Rejoignez notre communauté.",
+    path: '/adhesion',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [openAccordion, setOpenAccordion] = useState(0);

@@ -86,6 +86,10 @@ class Command(BaseCommand):
         admin = self._ensure_user("admin", "admin@afe-association.org", "45bNOKr&wTqdsC3I24", is_superuser=True)
         if not Member.objects.filter(user=admin).exists():
             Member.objects.create(user=admin, role="admin", rgpd_consent=True, membership_status=True)
+        admin_m = Member.objects.filter(user=admin).first()
+        if admin_m:
+            admin_m.show_in_directory = False
+            admin_m.save(update_fields=["show_in_directory"])
             self.stdout.write(self.style.SUCCESS("Admin créé: admin / 45bNOKr&wTqdsC3I24"))
 
         self._seed_accounts()
@@ -102,6 +106,22 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Données fictives créées avec succès !"))
 
+    def _apply_fictional_directory(self, member, idx):
+        """Renseigne des coordonnées fictives d'annuaire (téléphone, ville).
+
+        Les membres réels n'ont pas de coordonnées saisies : on génère des
+        données fictives cohérentes pour que l'annuaire de l'espace membre soit
+        rempli. Elles restent remplaçables par de vraies données via l'admin."""
+        cities = ["Lomé", "Palimé", "Aného", "Tsévié", "Atakpamé", "Sokodé",
+                  "Kpalimé", "Vogan", "Notsé", "Agbodrafo", "Dapaong", "Amlamé"]
+        prefixes = ["90", "91", "92", "96", "97", "98", "70", "71", "72", "93", "99"]
+        if not member.phone:
+            p = prefixes[idx % len(prefixes)]
+            member.phone = f"+228 {p} {12 + idx:02} {34 + idx:02} {56 + idx:02}"
+        if not member.address:
+            member.address = cities[idx % len(cities)]
+        return member
+
     def _ensure_user(self, username, email, password, is_superuser=False):
         existing = User.objects.filter(username=username).first()
         if existing:
@@ -113,64 +133,135 @@ class Command(BaseCommand):
         user.save()
         return user
 
+    # Membres réels de l'AFE (transcription_noms.pdf) — bureau + conseillers.
+    # Le président fondateur (SAGBO Jean-Pierre) est distinct du président actuel
+    # (KOLIWONOU K. Herve). Il se connecte avec le compte membre20.
+    BUREAU_ACCOUNTS = [
+        # username, mot de passe (identifiants.txt), prénom, nom, rôle membre, poste bureau, ordre, bio
+        ("bureau", "mZHjBqXUo7WBQVM0Zm&", "K. Herve", "KOLIWONOU", "bureau", "president", 1, "Président de l'AFE."),
+        ("secretaire", "l8mP&2x3TX$U%3nq7%", "Messan", "KPOSSOU", "secretary", "secretary", 2, "Secrétaire de l'AFE, chargé de la correspondance et des archives."),
+        ("tresorier", "Dv46XwwByrx$$NT4*d", "Kodjon R.", "ATTIKLE", "treasurer", "treasurer", 3, "Trésorier de l'AFE, chargé de la gestion financière."),
+        ("conseiller1", "rSF4^XkB*I@zUoAlqX", "Folly", "AMAVI", "member", "member", 4, "Conseiller de l'AFE."),
+        ("conseiller2", "rSF4^XkB*I@zUoAlqX", "Tékôl", "KANGNI-SOUMPE", "member", "member", 5, "Conseiller de l'AFE."),
+    ]
+
+    MEMBER_ACCOUNTS = [
+        # username, prénom, nom
+        ("membre1", "Dailor", "JOHNSON"),
+        ("membre2", "Samuel", "AMEGANVI"),
+        ("membre3", "Richard", "AHONTO"),
+        ("membre4", "Richard", "AFATCHAO"),
+        ("membre5", "A. Louis", "AWONOGBEASBO"),
+        ("membre6", "Teko", "GABIAM"),
+        ("membre7", "Daniel", "KONDO"),
+        ("membre8", "Ginado", "ZOGLO"),
+        ("membre9", "Gabriel", "KOMANTA"),
+        ("membre10", "Kossivi", "AGBODJI"),
+        ("membre11", "Anani", "AMAH-TCHOUTCHOU"),
+        ("membre12", "Comblan", "PLADJOE"),
+        ("membre13", "Messan", "AMAVI"),
+        ("membre14", "K. Socrate", "DADD"),
+        ("membre15", "F. Donatien", "SENA"),
+        ("membre16", "Anani", "ELAVAGNON"),
+        ("membre17", "K. Nestor", "AYEWOUI"),
+        ("membre18", "K. Abel", "GBESSEKOU"),
+        # membre20 = président fondateur (SAGBO Jean-Pierre)
+        ("membre20", "Jean-Pierre", "SAGBO"),
+    ]
+
+    # Anciens comptes de démonstration à retirer (pas dans la liste réelle)
+    STALE_USERNAMES = ["membre19", "membre"]
+
     def _seed_accounts(self):
-        accounts = [
-            ("bureau", "bureau@afe-association.org", "mZHjBqXUo7WBQVM0Zm&", "Marie", "Dupont", "bureau", "president", 1, "Présidente de l'AFE depuis 2020."),
-            ("tresorier", "tresorier@afe-association.org", "Dv46XwwByrx$$NT4*d", "Paul", "Bernard", "treasurer", "treasurer", 2, "Trésorier de l'AFE, chargé de la gestion financière."),
-            ("secretaire", "secretaire@afe-association.org", "l8mP&2x3TX$U%3nq7%", "Sophie", "Leclerc", "secretary", "secretary", 3, "Secrétaire de l'AFE, chargée de la correspondance et des archives."),
-            ("conseiller1", "conseiller1@afe-association.org", "rSF4^XkB*I@zUoAlqX", "Amadou", "Diallo", "member", "member", 4, "Conseiller de l'AFE."),
-            ("conseiller2", "conseiller2@afe-association.org", "rSF4^XkB*I@zUoAlqX", "Claire", "Durand", "member", "member", 5, "Conseillère de l'AFE."),
-        ]
-        for uname, email, pwd, fn, ln, role, pos, disp, bio in accounts:
-            if not User.objects.filter(username=uname).exists():
-                user = User.objects.create_user(uname, email, pwd, first_name=fn, last_name=ln)
-                m = Member.objects.create(
-                    user=user, role=role, rgpd_consent=True, membership_status=True, bio=bio,
-                )
-                pos_field = pos if pos in dict(BureauMember.POSITION_CHOICES) else "member"
-                BureauMember.objects.create(member=m, position=pos_field, display_order=disp)
-                self.stdout.write(self.style.SUCCESS(f"Compte créé: {uname} / {pwd}"))
+        for idx, (uname, pwd, fn, ln, role, pos, disp, bio) in enumerate(self.BUREAU_ACCOUNTS):
+            user, created = User.objects.get_or_create(
+                username=uname,
+                defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
+            )
+            if created:
+                # Identité + mot de passe positionnés uniquement à la création,
+                # pour que toute modification faite via le site persiste au redéploiement.
+                user.set_password(pwd)
+                user.email = f"{uname}@afe-association.org"
+                user.first_name = fn
+                user.last_name = ln
+                user.save()
+                self.stdout.write(self.style.SUCCESS(
+                    f"Compte bureau créé: {uname} / {pwd} ({fn} {ln})"
+                ))
+            member, member_created = Member.objects.get_or_create(user=user)
+            if member_created:
+                member.role = role
+                member.rgpd_consent = True
+                member.membership_status = True
+                member.bio = bio
+                member.is_active_member = True
+                member.show_in_directory = True
+                member = self._apply_fictional_directory(member, idx)
+                member.save()
+            BureauMember.objects.get_or_create(
+                member=member,
+                defaults={"position": pos if pos in dict(BureauMember.POSITION_CHOICES) else "member", "display_order": disp},
+            )
+            self.stdout.write(self.style.SUCCESS(
+                f"Compte bureau vérifié: {uname} (rôle {role})"
+            ))
 
     def _seed_members(self):
-        members_data = [
-            ("membre1", "Awa", "Camara"), ("membre2", "Salam", "Traoré"), ("membre3", "Fatou", "Ndiaye"),
-            ("membre4", "Ibrahima", "Sow"), ("membre5", "Mariam", "Cissé"), ("membre6", "Oumar", "Bâ"),
-            ("membre7", "Aminata", "Koné"), ("membre8", "Moussa", "Diallo"), ("membre9", "Khadija", "Fofana"),
-            ("membre10", "Seydou", "Keïta"), ("membre11", "Rokhaya", "Gueye"), ("membre12", "Aliou", "Ndiaye"),
-            ("membre13", "Nafi", "Sarr"), ("membre14", "Cheikh", "Niang"), ("membre15", "Bineta", "Diop"),
-            ("membre16", "Mamadou", "Thiam"), ("membre17", "Adja", "Fall"), ("membre18", "Idrissa", "Kaba"),
-            ("membre19", "Penda", "Mbow"), ("membre20", "Souleymane", "Kane"),
-        ]
-        existing = {m.user.username for m in Member.objects.select_related("user")}
-        now = timezone.now()
-        for uname, fn, ln in members_data:
-            if uname in existing:
-                continue
-            user = User.objects.create_user(uname, f"{uname}@afe-association.org", "rSF4^XkB*I@zUoAlqX", first_name=fn, last_name=ln)
-            Member.objects.create(
-                user=user, role="member", rgpd_consent=True, membership_status=True,
-                membership_date=now - timedelta(days=30 * (int(uname[-1]) % 12 + 1)),
-                bio=f"Membre actif de l'AFE."
+        now = timezone.now().date()
+        for idx, (uname, fn, ln) in enumerate(self.MEMBER_ACCOUNTS):
+            user, created = User.objects.get_or_create(
+                username=uname,
+                defaults={"email": f"{uname}@afe-association.org", "first_name": fn, "last_name": ln},
             )
-        self.stdout.write(self.style.SUCCESS(f"Membres fictifs: {len(members_data)} créés"))
+            if created:
+                # Identité + mot de passe positionnés uniquement à la création,
+                # pour que toute modification faite via le site persiste au redéploiement.
+                user.set_password("rSF4^XkB*I@zUoAlqX")
+                user.email = f"{uname}@afe-association.org"
+                user.first_name = fn
+                user.last_name = ln
+                user.save()
+                self.stdout.write(self.style.SUCCESS(f"Compte créé: {uname} / rSF4^XkB*I@zUoAlqX"))
+            member, member_created = Member.objects.get_or_create(user=user)
+            if member_created:
+                member.role = "member"
+                member.rgpd_consent = True
+                member.membership_status = True
+                member.membership_date = now - timedelta(days=int(uname.replace("membre", "")[:2]) % 12 * 30 + 30)
+                member.bio = "Membre actif de l'AFE."
+                member.is_active_member = True
+                member.show_in_directory = True
+                member = self._apply_fictional_directory(member, idx)
+                member.save()
+
+        # Retrait des anciens comptes de démonstration sans personne réelle associée
+        for uname in self.STALE_USERNAMES:
+            user = User.objects.filter(username=uname).first()
+            if user and not user.is_superuser:
+                if hasattr(user, "member_profile"):
+                    Member.objects.filter(pk=user.member_profile.pk).delete()
+                user.delete()
+                self.stdout.write(self.style.WARNING(f"Ancien compte fictif supprimé: {uname}"))
+
+        self.stdout.write(self.style.SUCCESS(f"Membres réels: {len(self.MEMBER_ACCOUNTS)} raccordés aux comptes"))
 
     def _seed_founders(self):
-        president = Member.objects.filter(user__username="bureau", role="bureau").first()
-        if president:
-            president.is_founder = True
-            president.founder_title = "Présidente fondatrice"
-            president.is_initiator = True
-            president.save(update_fields=["is_founder", "founder_title", "is_initiator", "photo"])
-        founder_names = ["Awa Camara", "Salam Traoré", "Fatou Ndiaye", "Ibrahima Sow"]
-        titles = ["Trésorière fondatrice", "Secrétaire fondatrice", "Membre fondateur", "Membre fondateur"]
-        for name, title in zip(founder_names, titles):
-            fn, ln = name.split(" ", 1)
-            m = Member.objects.filter(user__first_name=fn, user__last_name=ln).first()
-            if m:
-                m.is_founder = True
-                m.founder_title = title
-                m.save(update_fields=["is_founder", "founder_title"])
-        self.stdout.write(self.style.SUCCESS("Membres fondateurs marqués"))
+        # Uniquement à la première création : préserve les marqueurs fondateurs
+        # modifiés via le site (action "Membre fondateur" du secrétaire).
+        founder = Member.objects.filter(user__username="membre20").first()
+        if founder and not founder.is_founder:
+            founder.is_founder = True
+            founder.founder_title = "Président fondateur"
+            founder.is_initiator = True
+            founder.save(update_fields=["is_founder", "founder_title", "is_initiator"])
+            self.stdout.write(self.style.SUCCESS(
+                "Président fondateur (SAGBO Jean-Pierre) marqué (compte membre20)"
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                "Marqueurs fondateurs conservés (modifs du site préservées)"
+            ))
 
     def _seed_events(self, admin):
         now = timezone.now()
@@ -244,6 +335,11 @@ class Command(BaseCommand):
             {"file": "rapport_Juin_2026.pdf", "title": "Rapport de Juin 2026", "category": "report", "visible_to": "members"},
         ]
         admin = User.objects.get(username="admin")
+        if Document.objects.exists():
+            self.stdout.write(self.style.WARNING(
+                "Documents: déjà présents, seed ignoré (conserve les documents du bureau)"
+            ))
+            return
         Document.objects.all().delete()
         created = 0
         for d in docs:
@@ -251,15 +347,46 @@ class Command(BaseCommand):
             doc = Document.objects.create(uploaded_by=admin, title=d["title"], category=d["category"], visible_to=d["visible_to"], description="")
             src = os.path.join(seed_docs_dir, d["file"])
             if os.path.exists(src):
-                with open(src, "rb") as f:
-                    doc.file.save(d["file"], File(f), save=False)
-                    doc.file.name = rel
-                    doc.save(update_fields=["file"])
+                # On référence simplement le fichier seed/ (diffusé par
+                # /api/documents/<id>/serve/) sans uploader : le stockage
+                # par défaut pointe vers Cloudinary et on ne veut pas
+                # consommer le quota au seed pour des fichiers déjà versionnés.
+                doc.file.name = rel
+                doc.save(update_fields=["file"])
                 created += 1
         self.stdout.write(self.style.SUCCESS(f"Documents: {Document.objects.count()} (créés: {created})"))
 
     def _seed_gallery(self, admin):
         now = timezone.now()
+        if GalleryItem.objects.exists():
+            self.stdout.write(self.style.WARNING(
+                "Galerie: déjà peuplée, seed ignoré (conserve les uploads du bureau)"
+            ))
+            return
+        GalleryItem.objects.all().delete()
+        # 1) Médias réels (photos et vidéos WhatsApp) depuis le dossier seed/gallery
+        img_sources, vid_sources = self._collect_seed_media()
+        self.stdout.write(self.style.WARNING(
+            f"Galerie: {len(img_sources)} image(s) et {len(vid_sources)} vidéo(s) dans seed/gallery"
+        ))
+        img_by_name = {name: rel for rel, name in img_sources}
+        vid_by_name = {name: rel for rel, name in vid_sources}
+        for idx, name in enumerate(sorted(img_by_name), start=1):
+            try:
+                self._create_gallery_file_item(img_by_name[name], name, f"Photo AFE {idx}", "image", admin)
+            except Exception as exc:
+                self.stdout.write(self.style.ERROR(
+                    f"Échec photo {name}: {exc.__class__.__name__}: {exc}"
+                ))
+        for idx, name in enumerate(sorted(vid_by_name), start=1):
+            try:
+                self._create_gallery_file_item(vid_by_name[name], name, f"Vidéo AFE {idx}", "video", admin)
+            except Exception as exc:
+                self.stdout.write(self.style.ERROR(
+                    f"Échec vidéo {name}: {exc.__class__.__name__}: {exc}"
+                ))
+
+        # 2) Éléments de démonstration en ligne (Unsplash / YouTube) — conservés
         images = [
             ("Gala de la Fraternité", "image", "Événements", "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80"),
             ("Journée Portes Ouvertes", "image", "Événements", "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80"),
@@ -277,20 +404,56 @@ class Command(BaseCommand):
             ("Nos ateliers d'entraide", "video", "Vidéos", "https://www.youtube.com/embed/1La4QzGeaaQ", "youtube"),
         ]
         for title, ftype, cat, url in images:
-            if GalleryItem.objects.filter(title=title).exists():
-                continue
             GalleryItem.objects.create(
                 title=title, caption=title, category=cat, file_type=ftype,
                 image_url=url, is_published=True, created_by=admin,
             )
         for title, ftype, cat, url, platform in videos:
-            if GalleryItem.objects.filter(title=title).exists():
-                continue
             GalleryItem.objects.create(
                 title=title, caption=title, category=cat, file_type=ftype,
                 video_url=url, video_platform=platform, is_published=True, created_by=admin,
             )
-        self.stdout.write(self.style.SUCCESS(f"Galerie: {GalleryItem.objects.count()} (internet images + vidéos)"))
+        self.stdout.write(self.style.SUCCESS(f"Galerie: {GalleryItem.objects.count()} éléments (médias réels + démo en ligne)"))
+
+    def _collect_seed_media(self):
+        """Liste les médias réels présents dans backend/seed/gallery (rel seed/gallery, nom)."""
+        from django.conf import settings
+        seed_gallery = os.path.join(settings.BASE_DIR, "seed", "gallery")
+        img_sources = []
+        vid_sources = []
+        for root, _dirs, files in os.walk(seed_gallery):
+            rel_dir = os.path.relpath(root, os.path.join(settings.BASE_DIR, "seed"))
+            for fname in sorted(files):
+                if fname.lower().startswith("test"):
+                    continue
+                rel = os.path.join(rel_dir, fname).replace(os.sep, "/")
+                if fname.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+                    img_sources.append((rel, fname))
+                elif fname.lower().endswith((".mp4", ".mov", ".mkv", ".avi", ".webm")):
+                    vid_sources.append((rel, fname))
+        return img_sources, vid_sources
+
+    def _create_gallery_file_item(self, rel, name, title, file_type, admin):
+        """Crée un élément de galerie pointant vers le fichier du dossier seed/.
+
+        Le média n'est PAS copié dans le stockage (Cloudinary) pendant le seed :
+        les fichiers du dossier seed/ (versionné, donc toujours présent sur
+        Render) sont diffusés par l'endpoint /api/gallery/<id>/serve/. On stocke
+        uniquement le chemin relatif dans le champ image/video."""
+        item = GalleryItem(
+            title=title,
+            caption=name,
+            category="Photos" if file_type == "image" else "Vidéos",
+            file_type=file_type,
+            is_published=True,
+            created_by=admin,
+        )
+        if file_type == "image":
+            setattr(item, "image", rel)
+        else:
+            setattr(item, "video", rel)
+        item.save()
+        self.stdout.write(self.style.SUCCESS(f"Média réel ajouté: {title} <- {name}"))
 
     def _seed_reports(self, admin):
         now = date.today()

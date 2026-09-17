@@ -1,5 +1,4 @@
 from django.db import models
-from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.models import User
 
 
@@ -24,7 +23,16 @@ class Document(models.Model):
         "Fichier",
         upload_to="documents/%Y/%m/",
         max_length=500,
-        storage=FileSystemStorage(),
+    )
+    file_data = models.BinaryField(
+        "Contenu du fichier",
+        null=True,
+        blank=True,
+        help_text=(
+            "Octets du fichier uploadé par le bureau, stockés en base pour "
+            "survivre aux redéploiements (disque éphémère sur Render). Les "
+            "documents seed/ n'utilisent que `file` (référence vers seed/)."
+        ),
     )
     category = models.CharField("Catégorie", max_length=20, choices=CATEGORY_CHOICES)
     visible_to = models.CharField("Visible pour", max_length=20, choices=VISIBILITY_CHOICES, default="members")

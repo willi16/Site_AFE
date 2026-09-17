@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.fields import empty
 from afe_api.validators import validate_upload, ALLOWED_DOCUMENTS, ALLOWED_IMAGES, ALLOWED_VIDEOS
 from .models import FinancialRecord, MeetingReport, Attendance, Cotisation, GalleryItem, Donation, Notification
 
@@ -15,6 +16,43 @@ def build_absolute(serializer, path):
     if request:
         return request.build_absolute_uri(path)
     return path
+
+
+def gallery_item_media_url(field, value):
+    """URL d'affichage d'un média de galerie.
+
+    - Noms absolus "http(s)://" (uploads Cloudinary via le bureau) : renvoyés
+      tels quels.
+    - Noms relatifs (médias réels seed/) : URL du backend via l'endpoint
+      `/api/gallery/<id>/serve/`, qui diffuse le fichier depuis le dossier seed/
+      (versionné, donc toujours présent sur Render) — aucun upload Cloudinary
+      n'est nécessaire pendant le seed.
+    """
+    if not value:
+        return None
+    if str(value.name).startswith(("http://", "https://")):
+        return value.url
+    instance = getattr(value, "instance", None)
+    item_id = getattr(instance, "id", None)
+    serve = f"/api/gallery/{item_id}/serve/"
+    request = field.context.get("request")
+    if request is not None:
+        return request.build_absolute_uri(serve)
+    return serve
+
+
+class GalleryMediaImageField(serializers.ImageField):
+    """Champ image : upload normal, mais réponse seed-first via le serve."""
+
+    def to_representation(self, value):
+        return gallery_item_media_url(self, value)
+
+
+class GalleryMediaField(serializers.FileField):
+    """Champ vidéo : identique à GalleryMediaImageField pour les vidéos."""
+
+    def to_representation(self, value):
+        return gallery_item_media_url(self, value)
 
 
 class FinancialRecordSerializer(serializers.ModelSerializer):
@@ -83,12 +121,25 @@ class CotisationSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_by", "created_at", "updated_at"]
 
 
+class NonHtmlBooleanField(serializers.BooleanField):
+    """BooleanField sans la sémantique « case à cocher » de DRF.
+
+    Pour une requête multipart (upload de fichier), DRF renvoie
+    default_empty_html (False) pour tout booléen absent, ce qui mettait
+    is_published=False à l'ajout d'une image/vidéo par le bureau et rendait
+    la publication invisible aux membres/visiteurs. default_empty_html=empty
+    rend le champ « absent », donc le défaut (True) s'applique."""
+
+    default_empty_html = empty
+
+
 class GalleryItemSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(
+    is_published = NonHtmlBooleanField(required=False, default=True)
+    image = GalleryMediaImageField(
         required=False, allow_null=True,
         validators=[validate_upload(ALLOWED_IMAGES)],
     )
-    video = serializers.FileField(
+    video = GalleryMediaField(
         required=False, allow_null=True,
         validators=[validate_upload(ALLOWED_VIDEOS)],
     )
@@ -109,14 +160,17 @@ class GalleryItemSerializer(serializers.ModelSerializer):
         if obj.file_type == "video":
             if obj.video_url:
                 return obj.video_url
-            if obj.video:
-                return build_absolute(self, obj.video.url)
-            return None
+            return self._media_serve(obj.video, obj.id)
         if obj.image_url:
             return obj.image_url
-        if obj.image:
-            return build_absolute(self, obj.image.url)
-        return None
+        return self._media_serve(obj.image, obj.id)
+
+    def _media_serve(self, value, item_id):
+        if not value:
+            return None
+        if str(value.name).startswith(("http://", "https://")):
+            return build_absolute(self, value.url)
+        return build_absolute(self, f"/api/gallery/{item_id}/serve/")
 
     def get_is_video(self, obj):
         return obj.file_type == "video"

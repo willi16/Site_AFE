@@ -44,10 +44,43 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "full_name", "email", "role", "role_display",
             "account_status", "account_status_display",
-            "membership_status", "membership_date", "phone", "photo",
+            "membership_status", "membership_date", "phone", "address", "photo",
             "bio", "show_in_directory", "joined_date", "is_active_member",
             "is_founder", "founder_title", "is_initiator",
         ]
+
+
+class MemberAdminSerializer(serializers.ModelSerializer):
+    """Écriture des informations d'un membre, réservée au secrétaire."""
+    first_name = serializers.CharField(source="user.first_name", required=False, allow_blank=True)
+    last_name = serializers.CharField(source="user.last_name", required=False, allow_blank=True)
+    email = serializers.EmailField(source="user.email", required=False, allow_blank=True)
+    full_name = serializers.CharField(read_only=True)
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    account_status = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Member
+        fields = [
+            "id", "full_name", "first_name", "last_name", "email",
+            "role", "role_display", "account_status",
+            "membership_status", "is_active_member", "show_in_directory",
+            "phone", "address", "bio", "photo",
+            "is_founder", "founder_title", "is_initiator",
+        ]
+        extra_kwargs = {
+            "photo": {"required": False, "allow_null": True},
+        }
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+        if user_data:
+            user = instance.user
+            for field in ("first_name", "last_name", "email"):
+                if field in user_data and user_data[field] not in (None, ""):
+                    setattr(user, field, user_data[field])
+            user.save()
+        return super().update(instance, validated_data)
 
 
 class MemberPublicSerializer(serializers.ModelSerializer):

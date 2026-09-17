@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import { fetchFileUrl, revokeFileUrl } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -528,6 +529,39 @@ function GenericPage({ pageKey }) {
   const description = pageKey === 'membres' && memberCount != null
     ? `Une communauté de ${memberCount} membres actifs et engagés.`
     : config.description;
+
+  const seo = {
+    bureau: {
+      title: "Le Bureau — AFE, Association de Fraternité et d'Entraide",
+      description: "Découvrez les membres du bureau de l'AFE : président, vice-président, trésorier, secrétaire et conseillers.",
+      path: '/association/bureau',
+    },
+    membres: {
+      title: "Nos Membres — AFE",
+      description: "Rencontrez les membres actifs et engagés de l'Association de Fraternité et d'Entraide.",
+      path: '/association/membres',
+    },
+    documents: {
+      title: "Textes Officiels — AFE",
+      description: "Consultez les statuts, règlement intérieur et textes officiels de l'Association de Fraternité et d'Entraide.",
+      path: '/association/documents',
+    },
+    archives: {
+      title: "Galerie et Archives — AFE",
+      description: "Revivez les moments forts de l'AFE : photos et vidéos de nos événements et actions solidaires.",
+      path: '/evenements/archives',
+    },
+    actualites: {
+      title: "Actualités — AFE",
+      description: "Suivez l'actualité de l'Association de Fraternité et d'Entraide : projets, collectes, assemblées générales.",
+      path: '/actualites',
+    },
+  }[pageKey] || {
+    title: "Le Bureau — AFE, Association de Fraternité et d'Entraide",
+    description: "Découvrez les membres du bureau de l'AFE.",
+    path: '/association/bureau',
+  };
+  useSEO({ title: seo.title, description: seo.description, path: seo.path });
 
   return (
     <div className="pt-20">

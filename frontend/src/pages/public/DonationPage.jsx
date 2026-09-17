@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Heart, Phone, CreditCard, Shield, Users, ArrowRight, CheckCircle2, Send } from 'lucide-react';
 import api from '../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -39,6 +40,13 @@ function DonationPage() {
   const [form, setForm] = useState({ donor_name: '', donor_phone: '', amount: '', target_number: phoneNumbers[0].number, message: '' });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  useSEO({
+    title: "Faire un don — Soutenir l'AFE, Association de Fraternité et d'Entraide",
+    description:
+      "Soutenez l'Association de Fraternité et d'Entraide (AFE) par un don Mobile Money ou en espèces. Chaque geste compte pour nos actions solidaires.",
+    path: '/don',
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();

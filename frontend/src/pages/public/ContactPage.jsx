@@ -7,6 +7,7 @@ import { Mail, Phone, MapPin, Send, Clock, CheckCircle } from 'lucide-react';
 import SectionHeader from '../../components/ui/SectionHeader';
 import api from '../../api/axios';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
@@ -29,6 +30,13 @@ function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(contactSchema) });
+
+  useSEO({
+    title: 'Contact — AFE, Association de Fraternité et d\'Entraide',
+    description:
+      "Contactez l'Association de Fraternité et d'Entraide (AFE) : adhésion, partenariat ou demande d'information. Écrivez-nous à associationfe@gmail.com.",
+    path: '/contact',
+  });
 
   const onSubmit = async (data) => {
     const ok = await confirmAction(

@@ -39,3 +39,10 @@ Thumbs.db
 *.log
 *.tmp
 .vercel
+
+# Documentation et rapports locaux (jamais versionnés)
+docs_local/
+
+# Identifiants de connexion (secret)
+identifiants.txt
+frontend/public/identifiants.txt

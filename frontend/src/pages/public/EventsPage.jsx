@@ -5,6 +5,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import EventCard from '../../components/ui/EventCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useEvents } from '../../hooks/useEvents';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -22,6 +23,13 @@ function EventsPage() {
   const { events: apiEvents, loading } = useEvents();
   const events = apiEvents.length > 0 ? apiEvents : defaultEvents;
   const filtered = filter === 'all' ? events : events.filter(e => e.status === filter);
+
+  useSEO({
+    title: 'Événements et agenda — AFE',
+    description:
+      "Retrouvez l'agenda de l'AFE : événements solidaires, assemblées mensuelles, galas et activités de l'Association de Fraternité et d'Entraide.",
+    path: '/evenements',
+  });
 
   return (
     <div className="pt-20">

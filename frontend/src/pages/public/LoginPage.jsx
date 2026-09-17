@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { showError, showSuccess } from '../../utils/swal';
+import { useSEO } from '../../hooks/useSEO';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
@@ -22,6 +23,14 @@ function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(loginSchema) });
+
+  useSEO({
+    title: "Connexion — Espace membre AFE",
+    description:
+      "Accédez à l'espace membre ou à l'espace bureau de l'Association de Fraternité et d'Entraide (AFE).",
+    path: '/login',
+    noindex: true,
+  });
 
   const onSubmit = async (data) => {
     try {
