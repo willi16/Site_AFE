@@ -5,7 +5,8 @@ import api from '../../api/axios';
 import { fetchFileUrl, revokeFileUrl } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAction, showSuccess, showError, showLoading, closeLoading, extractError } from '../../utils/swal';
-import { useSEO } from '../../hooks/useSEO';
+import { useSEO, useJsonLd } from '../../hooks/useSEO';
+import { SITE_URL, absoluteImage } from '../../config/seo';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -231,7 +232,7 @@ function MembersPage({ onCount }) {
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mb-10">
         <div className="relative w-full h-72 md:h-96 rounded-3xl border border-surface-100 overflow-hidden">
           {settings.collective_photo ? (
-            <img src={settings.collective_photo} alt="Membres" className="w-full h-full object-cover" />
+            <img src={settings.collective_photo} alt="Membres" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-surface-100 flex flex-col items-center justify-center">
               <Upload className="w-12 h-12 text-surface-300 mb-2" />
@@ -255,7 +256,7 @@ function MembersPage({ onCount }) {
         {members.map((m) => (
           <motion.div key={m.id} variants={fadeInUp} className="relative aspect-[2/3] bg-white rounded-2xl border border-surface-100 overflow-hidden group hover:shadow-lg transition-all">
             {m.photo ? (
-              <img src={m.photo} alt={m.full_name} className="w-full h-full object-cover" />
+              <img src={m.photo} alt={m.full_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-primary-50">
                 <User className="w-16 h-16 text-primary-200" />
@@ -425,6 +426,28 @@ function PublicGallery() {
       .catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const galleryJsonLd = items.map((item) =>
+    item.is_video
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'VideoObject',
+          name: item.title,
+          description: item.caption || item.title,
+          thumbnailUrl: item.media_url?.includes('youtube.com')
+            ? `https://img.youtube.com/vi/${item.media_url.split('/').pop()}/hqdefault.jpg`
+            : absoluteImage(item.media_url || item.image),
+          contentUrl: item.media_url,
+        }
+      : {
+          '@context': 'https://schema.org',
+          '@type': 'ImageObject',
+          name: item.title,
+          description: item.caption || item.title,
+          contentUrl: absoluteImage(item.media_url || item.image),
+        },
+  );
+  useJsonLd(galleryJsonLd);
+
   const categories = ['all', ...new Set(items.map(i => i.category).filter(Boolean))];
   const filtered = filter === 'all' ? items : items.filter(i => i.category === filter);
 
@@ -451,7 +474,7 @@ function PublicGallery() {
               {item.is_video ? (
                 <div className="relative aspect-video bg-black">
                   {item.media_url?.includes('youtube.com') ? (
-                    <img src={`https://img.youtube.com/vi/${item.media_url.split('/').pop()}/hqdefault.jpg`} alt={item.title} className="w-full h-full object-cover opacity-80" />
+                    <img src={`https://img.youtube.com/vi/${item.media_url.split('/').pop()}/hqdefault.jpg`} alt={item.title} loading="lazy" decoding="async" className="w-full h-full object-cover opacity-80" />
                   ) : item.media_url ? (
                     <video src={item.media_url} preload="none" poster={item.media_url} className="w-full h-full object-cover" muted />
                   ) : null}
@@ -459,7 +482,7 @@ function PublicGallery() {
                   <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1"><Film className="w-3 h-3" /> Vidéo</span>
                 </div>
               ) : (
-                <img src={item.media_url || item.image} alt={item.caption || item.title} className="w-full aspect-video object-cover" />
+                <img src={item.media_url || item.image} alt={item.caption || item.title} loading="lazy" decoding="async" className="w-full aspect-video object-cover" />
               )}
               <div className="p-3">
                 <p className="text-sm font-semibold text-surface-800">{item.title}</p>
@@ -502,6 +525,20 @@ function ActualitesPage() {
       .catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  useJsonLd(
+    news.map((n) => ({
+      '@context': 'https://schema.org',
+      '@type': 'NewsArticle',
+      headline: n.title,
+      description: n.excerpt || (n.content && String(n.content).slice(0, 200)),
+      image: n.image ? absoluteImage(n.image) : undefined,
+      datePublished: n.created_at,
+      dateModified: n.updated_at || n.created_at,
+      author: { '@type': 'Organization', name: 'AFE' },
+      publisher: { '@type': 'Organization', name: 'AFE' },
+    })),
+  );
+
   return (
     <div>
       {loading ? <div className="text-center py-10 text-surface-400">Chargement...</div> : news.length === 0 ? (
@@ -510,7 +547,7 @@ function ActualitesPage() {
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="grid md:grid-cols-3 gap-6">
           {news.map(n => (
             <motion.div key={n.id} variants={fadeInUp} className="card p-6">
-              {n.image && <img src={n.image} alt={n.title} className="w-full h-40 object-cover rounded-xl mb-4" />}
+              {n.image && <img src={n.image} alt={n.title} loading="lazy" decoding="async" className="w-full h-40 object-cover rounded-xl mb-4" />}
               <div className="text-xs text-surface-400 mb-3">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
               <h3 className="text-lg font-bold text-surface-900 mb-2">{n.title}</h3>
               <p className="text-sm text-surface-500">{n.excerpt || n.content}</p>

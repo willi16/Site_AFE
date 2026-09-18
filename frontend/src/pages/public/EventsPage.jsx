@@ -6,6 +6,7 @@ import EventCard from '../../components/ui/EventCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useEvents } from '../../hooks/useEvents';
 import { useSEO } from '../../hooks/useSEO';
+import { SITE_URL } from '../../config/seo';
 
 const fadeInUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
@@ -24,11 +25,32 @@ function EventsPage() {
   const events = apiEvents.length > 0 ? apiEvents : defaultEvents;
   const filtered = filter === 'all' ? events : events.filter(e => e.status === filter);
 
+  const eventJsonLd = events
+    .map((e) => ({
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: e.title,
+      description: e.short_description || e.description,
+      startDate: e.event_date,
+      location: e.location ? { '@type': 'Place', name: e.location } : undefined,
+      eventStatus:
+        e.status === 'upcoming'
+          ? 'https://schema.org/EventScheduled'
+          : 'https://schema.org/EventEnded',
+      organizer: {
+        '@type': 'Organization',
+        name: "Association de Fraternité et d'Entraide (AFE)",
+        url: `${SITE_URL}/`,
+      },
+    }))
+    .filter((e) => e.name && e.startDate);
+
   useSEO({
     title: 'Événements et agenda — AFE',
     description:
       "Retrouvez l'agenda de l'AFE : événements solidaires, assemblées mensuelles, galas et activités de l'Association de Fraternité et d'Entraide.",
     path: '/evenements',
+    jsonLd: eventJsonLd,
   });
 
   return (

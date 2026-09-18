@@ -7,7 +7,7 @@ function EventCard({ event }) {
     <Link to={`/evenements/${event.id}`} className="card group">
       <div className="relative h-48 bg-gradient-to-br from-primary-500 to-primary-700 overflow-hidden">
         {event.images?.[0]?.image ? (
-          <img src={event.images[0].image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img src={event.images[0].image} alt={event.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Calendar className="w-16 h-16 text-white/30" />
