@@ -1,3 +1,15 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/association", "destination": "/association/index.html" },
+    { "source": "/association/bureau", "destination": "/association/bureau/index.html" },
+    { "source": "/association/membres", "destination": "/association/membres/index.html" },
+    { "source": "/association/documents", "destination": "/association/documents/index.html" },
+    { "source": "/evenements", "destination": "/evenements/index.html" },
+    { "source": "/evenements/archives", "destination": "/evenements/archives/index.html" },
+    { "source": "/actualites", "destination": "/actualites/index.html" },
+    { "source": "/adhesion", "destination": "/adhesion/index.html" },
+    { "source": "/don", "destination": "/don/index.html" },
+    { "source": "/contact", "destination": "/contact/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
